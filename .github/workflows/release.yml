@@ -3,6 +3,15 @@ name: Windows release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release (must match Cargo.toml)
+        required: true
+        default: v0.1.1
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
@@ -19,16 +28,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.tag || github.ref }}
           persist-credentials: false
       - name: Check version tag
         run: |
           $version = [regex]::Match((Get-Content Cargo.toml -Raw), '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"').Groups[1].Value
-          if ($env:GITHUB_REF_NAME -cne "v$version") { throw 'Tag must match Cargo.toml version.' }
+          if ($env:RELEASE_TAG -cne "v$version") { throw 'Tag must match Cargo.toml version.' }
       - name: Prepare stable Rust
         run: |
           rustup toolchain install stable --profile default
           if ($LASTEXITCODE) { throw 'Rust installation failed.' }
           rustup default stable
+          rustup component add rust-docs rustfmt clippy --toolchain stable
+          if ($LASTEXITCODE) { throw 'Rust components are unavailable.' }
           cargo fetch --locked --target x86_64-pc-windows-msvc
           if ($LASTEXITCODE) { throw 'Locked dependency download failed.' }
       - name: Check Rust
@@ -53,5 +65,5 @@ jobs:
         run: |
           $assets = @(Get-ChildItem target/packages/KShell-*-windows-x64.zip* | ForEach-Object FullName)
           if ($assets.Count -ne 2) { throw 'Expected the ZIP and SHA256 file.' }
-          gh release create $env:GITHUB_REF_NAME @assets --verify-tag --title "K Shell $env:GITHUB_REF_NAME" --notes-file contrib/distribution/RELEASE.md --latest
+          gh release create $env:RELEASE_TAG @assets --verify-tag --title "K Shell $env:RELEASE_TAG" --notes-file contrib/distribution/RELEASE.md --latest
           if ($LASTEXITCODE) { throw 'Release publication failed.' }
