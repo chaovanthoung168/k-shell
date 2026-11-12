@@ -41,7 +41,9 @@ jobs:
           rustup default stable
           rustup component add rust-docs rustfmt clippy --toolchain stable
           if ($LASTEXITCODE) { throw 'Rust components are unavailable.' }
-          cargo fetch --locked --target x86_64-pc-windows-msvc
+          # Packaging collects notices for the entire locked dependency graph,
+          # including crates for other platforms; prefetch all of them offline.
+          cargo fetch --locked
           if ($LASTEXITCODE) { throw 'Locked dependency download failed.' }
       - name: Check Rust
         run: |
