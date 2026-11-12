@@ -3,6 +3,8 @@ param(
     [string]$InstallDirectory,
     [string]$TerminalProfilePath,
     [string]$FontFace = 'auto',
+    [ValidateSet('None', 'Process', 'User')]
+    [string]$PathScope = 'None',
     [switch]$NoTerminalProfile
 )
 
@@ -62,6 +64,22 @@ if (-not $NoTerminalProfile) {
     $profileArguments = @{ Executable = $installedExecutable; FontFace = $FontFace }
     if ($TerminalProfilePath) { $profileArguments.OutputPath = $TerminalProfilePath }
     & (Join-Path $installPath 'Install-KShellProfile.ps1') @profileArguments
+}
+if ($PathScope -ne 'None') {
+    function Add-KShellPath([string]$ExistingPath) {
+        foreach ($entry in ($ExistingPath -split ';')) {
+            if ($entry.Trim().Trim('"').TrimEnd('\','/') -ieq $installPath) { return $ExistingPath }
+        }
+        if ([string]::IsNullOrEmpty($ExistingPath)) { return $installPath }
+        return $ExistingPath.TrimEnd(';') + ';' + $installPath
+    }
+    if ($PathScope -eq 'User') {
+        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+        $newUserPath = Add-KShellPath $userPath
+        if ($newUserPath -cne $userPath) { [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User') }
+        Write-Output 'Added K Shell to your user PATH. Restart your terminal app to refresh other sessions.'
+    }
+    $env:PATH = Add-KShellPath $env:PATH
 }
 Write-Output "Installed K Shell $($manifest.version): $installedExecutable"
 if (-not $NoTerminalProfile) { Write-Output 'Close and reopen Windows Terminal, then select K Shell from the profile dropdown.' }

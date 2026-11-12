@@ -11,6 +11,42 @@ measures filenames in terminal cells for aligned columns, and `windows-sys`
 enables console styling, default-app file opening and read-only hardware queries through native Windows APIs. Both were already transitive
 dependencies of the line editor.
 
+## Install on Windows
+
+Open PowerShell on Windows 10/11 x64 and run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 | iex"
+```
+
+Restart your terminal app, then run `kshell`, or select **K Shell** in Windows
+Terminal's profile menu. No administrator access, Rust, WSL, or new fonts are
+required. The command uses a process-only execution policy; it does not change
+your saved policy. PowerShell runs setup only, never K Shell's runtime/parser.
+
+The bootstrap downloads the latest stable [GitHub release](https://github.com/chaovanthoung168/k-shell/releases/latest),
+checks the ZIP's SHA256 before extraction, and installs into
+`%LOCALAPPDATA%\Programs\KShell`. It adds this directory to your **user** PATH,
+preserves prior executable/profile backups on upgrade, and registers a Windows
+Terminal profile. Existing history and your default Terminal profile are preserved.
+Run the same command again to update. Close existing K Shell sessions before updating.
+
+To inspect setup or choose a version and destination, download `install.ps1` first:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 -OutFile install.ps1
+Get-Content .\install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.1
+```
+
+Options: `-InstallDirectory 'D:\Apps\KShell'`, `-NoTerminalProfile`,
+`-FontFace Consolas`, and `-PathScope None` (leave PATH unchanged) or `Process`
+(current setup process only). Offline installation accepts `-Archive <ZIP>` and
+its adjacent `.sha256` file; `-ChecksumFile <path>` overrides that file's location.
+The ZIP is an unsigned x64 build. Download the ZIP and checksum directly for
+portable use if preferred. See its included README for manual removal; also
+remove the K Shell folder from your user PATH if added.
+
 ## Build and run
 
 To share K Shell without requiring Rust on the recipient's machine, build the
@@ -32,20 +68,29 @@ is never overwritten. Build tools are needed only on the developer's machine.
 Recipients extract the ZIP and either run `kshell.exe` directly, or run the
 included `Install.ps1` from PowerShell to copy it into
 `%LOCALAPPDATA%\Programs\KShell` and register a Windows Terminal profile. No admin,
-global PATH change or font installation is required. Restart Terminal after
+machine PATH change or font installation is required. The packaged installer
+leaves PATH unchanged unless you pass `-PathScope User` or `-PathScope Process`.
+Restart Terminal after
 installation. Font selection uses an installed Meslo Nerd Font Mono when found,
 otherwise Consolas with Unicode icons. A recipient can override `-FontFace` or
 choose `-NoTerminalProfile`. Old executable/profile copies are backed up on
 upgrade, unmarked nonempty installation folders are protected, and checksum
 failure stops before any installation. Existing sessions finish normally.
 
-The package is an unsigned Windows 10/11 x64 build, not an MSI or a published
-download. Native programs such as Git, Nano, Node/npm and VS Code are optional,
+The package is an unsigned Windows 10/11 x64 build, not an MSI.
+Native programs such as Git, Nano, Node/npm and VS Code are optional,
 separate installations. Release smoke checks:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.1-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.1-windows-x64.zip
 ```
+
+Maintainers: update the Cargo version, commit, then push a matching `vMAJOR.MINOR.PATCH`
+tag. `.github/workflows/release.yml` checks Rust, builds the locked Windows package,
+runs the isolated Windows PowerShell distribution/installer checks, and publishes
+the ZIP and checksum as a GitHub release. An existing release is never overwritten.
+No custom release secret is needed; the job uses GitHub's scoped workflow token.
 
 With stable Rust and the Windows MSVC build tools installed:
 

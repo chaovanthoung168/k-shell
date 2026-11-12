@@ -21,7 +21,11 @@ not change your saved policy. Run it only for a package you intend to install.
 
 Installation folder: %LOCALAPPDATA%\Programs\KShell
 Terminal fragment: %LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\K Shell
-Your Terminal default profile, other profiles, PATH, and fonts are not changed.
+Your Terminal default profile, other profiles, and fonts are not changed.
+The packaged installer leaves PATH unchanged by default. Pass -PathScope User
+to add the install folder to your user PATH, or -PathScope Process to change only
+the current setup process. No machine PATH is changed. Restart your terminal app
+after adding user PATH, then run kshell from PowerShell or CMD.
 The installed profile points to the installed copy, so you can remove the
 extracted download folder after installation. A prior installation is retained
 as a kshell-previous-*.exe backup during upgrades. Close old sessions when ready.
@@ -33,6 +37,9 @@ Consolas with standard Unicode icons. No font or other software is downloaded.
 To choose an installed Nerd Font Mono explicitly:
    .\Install.ps1 -FontFace 'Your Nerd Font Mono'
 Use -NoTerminalProfile to install only the application.
+For online installation and upgrades, the repository-root install.ps1 downloads
+the latest GitHub release, verifies its ZIP checksum, and adds user PATH by default:
+   powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 | iex"
 If the profile is missing, restart all Terminal windows. You can also add an
 empty profile in Terminal Settings and select the installed kshell.exe, using:
    kshell.exe --theme midnight --icons unicode --suggestions soft
@@ -61,7 +68,8 @@ spaces. Fonts/background are settings of your terminal host.
 HISTORY / REMOVAL
 History uses %APPDATA%\mysh\history.txt for compatibility. It is not part of this
 ZIP. To remove the application, close K Shell and remove its installation folder
-and its K Shell Terminal fragment folder. Keep your history if you want it.
+and its K Shell Terminal fragment folder. If added, remove the installation folder
+from your user PATH in Windows Environment Variables. Keep your history if wanted.
 
 SHARING / VERIFICATION
 Share the original ZIP and its matching .sha256 file. In the ZIP's download

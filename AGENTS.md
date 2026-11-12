@@ -21,6 +21,13 @@ unmarked folders, backs up upgrades and uses standard icons/font fallback when
 Nerd Fonts are absent. Setup scripts may use PowerShell for installation only;
 the shell's runtime/parser never delegates user input to them. Tests use private
 install/profile destinations and never modify the real user's installation.
+The root `install.ps1` downloads stable GitHub release assets, verifies the ZIP
+checksum and archive paths before extraction, then invokes that package installer.
+Its default is user PATH; the package installer defaults to unchanged PATH.
+`-PathScope Process`/`None` keeps tests isolated. `scripts/Test-Installer.ps1`
+covers bootstrap installation with local download fixtures; `-LiveRelease`
+additionally checks public downloads using private install/profile destinations.
+Version tags publish via `.github/workflows/release.yml` only after package checks.
 
 ## Goals and non-goals
 
