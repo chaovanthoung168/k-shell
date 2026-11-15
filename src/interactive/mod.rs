@@ -21,7 +21,9 @@ pub mod completion;
 mod highlight;
 pub mod prompt;
 mod screen;
+pub mod theme_picker;
 mod validation;
+pub mod welcome;
 use completion::ShellHelper;
 
 impl Helper for ShellHelper {}
@@ -157,6 +159,14 @@ pub fn run(state: &mut ShellState) -> Result<i32, ShellError> {
         history = None;
     }
     let mut output = io::stdout();
+    welcome::write(
+        &mut output,
+        console.colors_enabled(),
+        editor
+            .dimensions()
+            .map_or(80, |(columns, _)| columns as usize),
+    )
+    .map_err(|error| ShellError::new(format!("welcome: {error}"), 1))?;
     loop {
         // A foreground program may change the title. Reclaim it at the prompt.
         if let Some(title) = &title {
@@ -210,6 +220,29 @@ pub fn run(state: &mut ShellState) -> Result<i32, ShellError> {
         let command_cwd = state.cwd().to_path_buf();
         match state.execute_with_format(&line, &mut output, format) {
             Ok(outcome) if outcome.action == ShellAction::Exit => return Ok(outcome.status),
+            Ok(outcome) if outcome.action == ShellAction::ChooseTheme => {
+                if !console.supports_ansi() {
+                    state.last_status = 1;
+                    let _ = writeln!(
+                        io::stderr(),
+                        "kshell: theme: this terminal cannot redraw the picker; use theme list, theme install <name>, then theme <name>"
+                    );
+                    continue;
+                }
+                match theme_picker::choose(
+                    &mut output,
+                    state.appearance(),
+                    console.colors_enabled(),
+                    format.terminal_width.unwrap_or(80),
+                ) {
+                    Ok(Some(theme)) => state.appearance.prompt = theme,
+                    Ok(None) => {}
+                    Err(error) => {
+                        state.last_status = 1;
+                        let _ = writeln!(io::stderr(), "kshell: theme: {error}");
+                    }
+                }
+            }
             Ok(outcome) if outcome.action == ShellAction::ClearScreen => {
                 output
                     .flush()

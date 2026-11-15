@@ -14,6 +14,7 @@ pub enum ShellAction {
     Continue,
     Exit,
     ClearScreen,
+    ChooseTheme,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

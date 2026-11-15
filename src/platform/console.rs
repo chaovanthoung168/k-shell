@@ -74,10 +74,12 @@ impl ConsoleOutput {
         result
     }
 
+    pub fn supports_ansi(&self) -> bool {
+        self.ansi && std::env::var_os("TERM").is_none_or(|value| value != "dumb")
+    }
+
     pub fn colors_enabled(&self) -> bool {
-        self.ansi
-            && !std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
-            && std::env::var_os("TERM").is_none_or(|value| value != "dumb")
+        self.supports_ansi() && !std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
     }
 }
 

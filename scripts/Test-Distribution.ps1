@@ -14,7 +14,8 @@ try {
     $installer = Join-Path $packageRoot 'Install.ps1'
     $install = Join-Path $testRoot 'installed with spaces'
     $profile = Join-Path $testRoot 'terminal\K Shell\kshell.json'
-    & $installer -InstallDirectory $install -TerminalProfilePath $profile -FontFace 'Consolas'
+    $setupOutput = & $installer -InstallDirectory $install -TerminalProfilePath $profile -FontFace 'Consolas' -NoAnimation
+    Assert-True (($setupOutput -join "`n").Contains('Welcome to K Shell')) 'Successful setup did not display the K Shell welcome.'
     $executable = Join-Path $install 'kshell.exe'
     Assert-True (Test-Path -LiteralPath $executable) 'Installed executable is missing.'
     $manifest = Get-Content -LiteralPath (Join-Path $packageRoot 'package-manifest.json') -Raw | ConvertFrom-Json
@@ -22,6 +23,7 @@ try {
     $settings = Get-Content -LiteralPath $profile -Raw | ConvertFrom-Json
     Assert-True ($settings.profiles[0].commandline.Contains($executable)) 'Profile points at the download instead of the installed copy.'
     Assert-True ($settings.profiles[0].commandline.Contains('--icons unicode')) 'Standard font must use standard icons.'
+    Assert-True (-not $settings.profiles[0].commandline.Contains('--theme')) 'Fresh installation must not force an optional palette.'
     Assert-True ($settings.profiles[0].font.face -eq 'Consolas') 'Selected font was not applied.'
     Assert-True (Test-Path -LiteralPath (Join-Path $install 'licenses\rustyline-19.0.0\LICENSE')) 'Installed dependency license text is missing.'
     Assert-True (Test-Path -LiteralPath (Join-Path $install 'licenses\rust-standard-library\COPYRIGHT-library.html')) 'Rust standard-library notices are missing.'

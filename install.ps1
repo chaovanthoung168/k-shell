@@ -13,10 +13,26 @@ param(
     [string]$FontFace = 'auto',
     [ValidateSet('User', 'Process', 'None')]
     [string]$PathScope = 'User',
-    [switch]$NoTerminalProfile
+    [switch]$NoTerminalProfile,
+    [switch]$NoAnimation
 )
 
 $ErrorActionPreference = 'Stop'
+function Show-KShellProgress([int]$Percent, [string]$Stage) {
+    # The bar grows from RIGHT to LEFT. Only advance after a real setup stage.
+    $animate = -not $NoAnimation -and $Host.Name -eq 'ConsoleHost' -and -not [Console]::IsOutputRedirected
+    $start = 0
+    if ($null -ne $script:kShellProgress) { $start = $script:kShellProgress }
+    $script:kShellProgress = $Percent
+    if (-not $animate) { Write-Host "[$Percent%] $Stage"; return }
+    for ($frame = $start; $frame -le $Percent; $frame++) {
+        $filled = [int][Math]::Floor(24 * $frame / 100)
+        $bar = ('-' * (24 - $filled)) + ('#' * $filled)
+        Write-Host -NoNewline ("`r  K Shell [{0}] {1,3}%  {2}    " -f $bar, $frame, $Stage)
+        Start-Sleep -Milliseconds 8
+    }
+    Write-Host ''
+}
 if ([Environment]::OSVersion.Platform -ne 'Win32NT' -or -not [Environment]::Is64BitOperatingSystem) {
     throw 'K Shell requires 64-bit Windows 10 or 11.'
 }
@@ -25,6 +41,7 @@ $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('kshell-download-' + [Gui
 [IO.Directory]::CreateDirectory($temporaryRoot) | Out-Null
 $previousTls = [Net.ServicePointManager]::SecurityProtocol
 try {
+    Show-KShellProgress 5 'Preparing setup'
     [Net.ServicePointManager]::SecurityProtocol = $previousTls -bor [Net.SecurityProtocolType]::Tls12
     if ($PSCmdlet.ParameterSetName -eq 'Online') {
         $endpoint = 'latest'
@@ -38,6 +55,7 @@ try {
         }
         if ($release.draft -or $release.prerelease -or $release.tag_name -notmatch '^v([0-9]+\.[0-9]+\.[0-9]+)$') { throw 'Expected a stable vMAJOR.MINOR.PATCH release.' }
         $releaseVersion = $Matches[1]
+        Show-KShellProgress 20 'Found stable release'
         if ($Version -ne 'latest' -and $releaseVersion -ne $Version.TrimStart('v')) { throw 'GitHub returned a different release version.' }
         $archiveName = "KShell-$releaseVersion-windows-x64.zip"
         foreach ($name in @($archiveName, ($archiveName + '.sha256'))) {
@@ -49,6 +67,7 @@ try {
         }
         $Archive = Join-Path $temporaryRoot $archiveName
         $ChecksumFile = $Archive + '.sha256'
+        Show-KShellProgress 45 'Downloaded release'
     } else {
         $Archive = (Resolve-Path -LiteralPath $Archive).ProviderPath
         $archiveName = [IO.Path]::GetFileName($Archive)
@@ -62,6 +81,7 @@ try {
     $expectedHash = $Matches[1]
     if ((Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash -ine $expectedHash) { throw 'ZIP checksum verification failed. Nothing has been installed.' }
     Write-Host "Verified K Shell $releaseVersion. Installing..."
+    Show-KShellProgress 60 'Verified download checksum'
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $extracted = Join-Path $temporaryRoot 'extracted'
@@ -85,13 +105,17 @@ try {
         }
     } finally { $zip.Dispose() }
     [IO.Compression.ZipFile]::ExtractToDirectory($Archive, $extracted)
+    Show-KShellProgress 75 'Extracted verified package'
     $package = Join-Path $extracted $packageName
     $manifest = Get-Content -LiteralPath (Join-Path $package 'package-manifest.json') -Raw | ConvertFrom-Json
     if ($manifest.version -cne $releaseVersion) { throw 'Package version does not match the release.' }
     $arguments = @{ FontFace = $FontFace; PathScope = $PathScope; NoTerminalProfile = $NoTerminalProfile }
+    # Older public packages do not have the display switch yet.
+    if ((Get-Command (Join-Path $package 'Install.ps1')).Parameters.ContainsKey('NoAnimation')) { $arguments.NoAnimation = $NoAnimation }
     if ($InstallDirectory) { $arguments.InstallDirectory = $InstallDirectory }
     if ($TerminalProfilePath) { $arguments.TerminalProfilePath = $TerminalProfilePath }
     & (Join-Path $package 'Install.ps1') @arguments
+    Show-KShellProgress 100 'Installation complete'
     if ($PathScope -eq 'User') { Write-Host 'K Shell is ready. Restart your terminal app, then run kshell.' }
     elseif ($PathScope -eq 'Process') { Write-Host 'K Shell is ready. Run kshell in this PowerShell process.' }
     else { Write-Host 'K Shell is ready. Launch kshell.exe from your installation folder.' }

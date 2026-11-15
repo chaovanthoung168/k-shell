@@ -239,10 +239,10 @@ fn theme_completion_offers_only_its_choices_and_command_mode_is_plain() {
     fs::write(temp.path().join("dusk-unrelated-file"), b"").unwrap();
     for (line, expected) in [
         ("the", "theme "),
-        ("theme d", "dusk "),
+        ("theme du", "dusk "),
         ("theme icons n", "nerd "),
         ("theme icons u", "unicode "),
-        ("theme s", "suggestions "),
+        ("theme sug", "suggestions "),
         ("theme suggestions s", "soft "),
         ("theme suggestions b", "bold "),
         ("theme suggestions u", "underline "),

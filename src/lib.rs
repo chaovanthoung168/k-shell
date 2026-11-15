@@ -5,6 +5,7 @@ pub mod language;
 pub mod platform;
 pub mod presentation;
 pub mod runtime;
+pub mod themes;
 
 /// New names take precedence, including an explicitly empty value. Preserve
 /// existing installations' startup settings while the product is renamed.

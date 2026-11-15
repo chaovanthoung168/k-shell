@@ -106,6 +106,31 @@ fn wait_until(description: &str, predicate: impl Fn() -> bool) -> io::Result<()>
     Ok(())
 }
 
+fn press_key(virtual_key: u16) -> io::Result<()> {
+    let record = INPUT_RECORD {
+        EventType: KEY_EVENT as u16,
+        Event: INPUT_RECORD_0 {
+            KeyEvent: KEY_EVENT_RECORD {
+                bKeyDown: 1,
+                wRepeatCount: 1,
+                wVirtualKeyCode: virtual_key,
+                ..Default::default()
+            },
+        },
+    };
+    let mut written = 0;
+    // SAFETY: invoked only in the checked, isolated console; valid record/out pointer.
+    unsafe {
+        checked(WriteConsoleInputW(
+            GetStdHandle(STD_INPUT_HANDLE),
+            &record,
+            1,
+            &mut written,
+        ))?;
+    }
+    Ok(())
+}
+
 fn control_key(letter: u16) -> io::Result<()> {
     let record = INPUT_RECORD {
         EventType: KEY_EVENT as u16,
@@ -318,6 +343,7 @@ fn probe() -> io::Result<()> {
         .env("TERM", "xterm-256color")
         .env("NO_COLOR", "1")
         .env("KSHELL_HISTORY_FILE", "")
+        .env("KSHELL_CONFIG_DIR", cwd.join("theme-config"))
         .env("MYSH_HISTORY_FILE", cwd.join("legacy-history.txt"))
         .env_remove("KSHELL_THEME")
         .env("MYSH_THEME", "dusk")
@@ -331,7 +357,7 @@ fn probe() -> io::Result<()> {
         .env("npm_config_update_notifier", "false")
         .env("npm_config_offline", "true")
         .spawn()?;
-    type_command("theme\r")?;
+    type_command("theme status\r")?;
     wait_until(
         "legacy settings and new-setting precedence are applied",
         || {
@@ -342,6 +368,55 @@ fn probe() -> io::Result<()> {
             })
         },
     )?;
+    if Path::new("theme-config").exists() {
+        return Err(io::Error::other(
+            "fresh interactive startup installed optional themes",
+        ));
+    }
+    type_command("theme\r")?;
+    wait_until("arrow-key picker opens", || {
+        screen_text().is_ok_and(|s| s.contains("Enter install & use"))
+    })?;
+    press_key(0x28)?;
+    wait_until("Down previews Powerline", || {
+        screen_text().is_ok_and(|s| s.contains("> powerline"))
+    })?;
+    press_key(0x1b)?;
+    wait_until("Esc cancels picker", || {
+        screen_text().is_ok_and(|s| s.contains("Theme selection cancelled."))
+    })?;
+    if Path::new("theme-config").exists() {
+        return Err(io::Error::other("cancelled picker wrote configuration"));
+    }
+    type_command("theme\r")?;
+    wait_until("picker reopens at default", || {
+        screen_text().is_ok_and(|s| s.contains("> default"))
+    })?;
+    press_key(0x26)?;
+    wait_until("Up wraps to Negligible", || {
+        screen_text().is_ok_and(|s| s.contains("> negligible"))
+    })?;
+    press_key(0x28)?;
+    wait_until("Down wraps to default", || {
+        screen_text().is_ok_and(|s| s.contains("> default"))
+    })?;
+    press_key(0x28)?;
+    wait_until("Down selects Powerline again", || {
+        screen_text().is_ok_and(|s| s.contains("> powerline"))
+    })?;
+    press_key(0x0d)?;
+    wait_until("Enter installs and saves selected theme", || {
+        fs::read_to_string("theme-config/selected-theme").is_ok_and(|s| s == "powerline\n")
+    })?;
+    if fs::read_dir("theme-config/themes")?.count() != 1 {
+        return Err(io::Error::other(
+            "picker installed designs other than the selection",
+        ));
+    }
+    type_command("touch after-theme\r")?;
+    wait_until("shell accepts commands after picker", || {
+        Path::new("after-theme").is_file()
+    })?;
     let mut title = [0u16; 512];
     // SAFETY: writable UTF-16 buffer, in this test's verified private console.
     let length = unsafe { GetConsoleTitleW(title.as_mut_ptr(), title.len() as u32) } as usize;
@@ -486,9 +561,14 @@ fn history_roundtrip_probe() -> io::Result<()> {
         .env("NO_COLOR", "1")
         .env("KSHELL_ICONS", "off")
         .env("KSHELL_HISTORY_FILE", &history_file)
+        .env("KSHELL_CONFIG_DIR", cwd.join("theme-config"))
         .spawn()?;
     wait_until("history test shell is ready", || {
         screen_text().is_ok_and(|s| s.matches('›').count() > prompts_before)
+    })?;
+    type_command("theme status\r")?;
+    wait_until("saved prompt is loaded in a new session", || {
+        screen_text().is_ok_and(|s| s.contains("Prompt: powerline"))
     })?;
     type_command("history 10\r")?;
     wait_until(
@@ -496,7 +576,7 @@ fn history_roundtrip_probe() -> io::Result<()> {
         || {
             screen_text().is_ok_and(|s| {
                 s.contains("    1  echo RESTORED-HISTORY-FIXTURE")
-                    && s.contains("    2  history 10")
+                    && s.contains("    3  history 10")
                     && s.matches('›').count() > prompts_before + 1
             })
         },

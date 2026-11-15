@@ -70,19 +70,7 @@ pub(crate) fn valid_preview_syntax(args: &[String]) -> Option<bool> {
         "create" | "rm" | "delete" | "cp" | "copy" | "mv" | "move" | "rename" | "update" => {
             files::valid_syntax(&args[0], operands)
         }
-        "theme" => match operands {
-            [] => true,
-            [value] => {
-                matches!(value.as_str(), "reset" | "-h" | "--help")
-                    || crate::presentation::Palette::parse(value).is_some()
-            }
-            [kind, mode] => match kind.as_str() {
-                "icons" => crate::presentation::IconMode::parse(mode).is_some(),
-                "suggestions" => crate::presentation::SuggestionStyle::parse(mode).is_some(),
-                _ => false,
-            },
-            _ => false,
-        },
+        "theme" => theme::valid_syntax(operands),
         _ => return None,
     })
 }
@@ -98,7 +86,9 @@ pub fn run(
         action: ShellAction::Continue,
     };
     match args[0].as_str() {
-        "theme" => theme::run(&args[1..], state, output)?,
+        "theme" => {
+            outcome.action = theme::run(&args[1..], state, output, format.terminal_width.is_some())?
+        }
         "history" => history::run(&args[1..], &state.history, output, format)?,
         "sysinfo" | "specs" => system::run(args, output, format)?,
         "write" | "append" => text::run(&args[0], &args[1..], &state.cwd)?,
@@ -198,7 +188,9 @@ pub fn run(
                     "npx [arguments]: launch npm's package runner (when installed)\n",
                     "clear: clear the terminal screen\n",
                     "history [count]: list saved/session commands, optionally only the last count\n",
-                    "theme [ocean|dusk|midnight]: choose colors; theme icons unicode|nerd|off\n",
+                    "theme: Up/Down picker for 5 optional designs; Enter installs and saves\n",
+                    "theme list | install <name> | <name> | default; theme ocean|dusk|midnight\n",
+                    "theme icons unicode|nerd|off: choose prompt and file icons\n",
                     "theme suggestions soft|bold|underline: style suggestion previews\n",
                     "Tab: completion; Right: accept suggestion; Up/Down: history\n",
                     "Pipes, redirection, and variable expansion are not implemented yet."

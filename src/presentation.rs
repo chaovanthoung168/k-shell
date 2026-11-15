@@ -81,6 +81,7 @@ impl SuggestionStyle {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Appearance {
+    pub prompt: crate::themes::PromptTheme,
     pub palette: Palette,
     pub icons: IconMode,
     pub suggestions: SuggestionStyle,

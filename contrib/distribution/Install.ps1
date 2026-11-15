@@ -5,10 +5,26 @@ param(
     [string]$FontFace = 'auto',
     [ValidateSet('None', 'Process', 'User')]
     [string]$PathScope = 'None',
-    [switch]$NoTerminalProfile
+    [switch]$NoTerminalProfile,
+    [switch]$NoAnimation
 )
 
 $ErrorActionPreference = 'Stop'
+function Show-KShellProgress([int]$Percent, [string]$Stage) {
+    $animate = -not $NoAnimation -and $Host.Name -eq 'ConsoleHost' -and -not [Console]::IsOutputRedirected
+    $start = 0
+    if ($null -ne $script:kShellPackageProgress) { $start = $script:kShellPackageProgress }
+    $script:kShellPackageProgress = $Percent
+    if (-not $animate) { Write-Host "[$Percent%] $Stage"; return }
+    for ($frame = $start; $frame -le $Percent; $frame++) {
+        $filled = [int][Math]::Floor(24 * $frame / 100)
+        $bar = ('-' * (24 - $filled)) + ('#' * $filled)
+        Write-Host -NoNewline ("`r  K Shell [{0}] {1,3}%  {2}    " -f $bar, $frame, $Stage)
+        Start-Sleep -Milliseconds 8
+    }
+    Write-Host ''
+}
+Show-KShellProgress 5 'Checking package'
 $sourceExecutable = Join-Path $PSScriptRoot 'kshell.exe'
 foreach ($requiredFile in @('kshell.exe','package-manifest.json','Install-KShellProfile.ps1','LICENSE','THIRD-PARTY-NOTICES.txt','README.txt')) {
     if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $requiredFile) -PathType Leaf)) { throw "Incomplete package: $requiredFile" }
@@ -18,6 +34,7 @@ $manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'package-manifest.
 if ($manifest.application -ne 'K Shell' -or $manifest.platform -ne 'windows-x64') { throw 'Unsupported K Shell package.' }
 if ((Get-FileHash -LiteralPath $sourceExecutable -Algorithm SHA256).Hash -ne $manifest.sha256) { throw 'Package integrity check failed: kshell.exe does not match its manifest.' }
 if (-not [Environment]::Is64BitOperatingSystem) { throw 'This package requires 64-bit Windows.' }
+Show-KShellProgress 20 'Verified executable checksum'
 if (-not $InstallDirectory) { $InstallDirectory = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\KShell' }
 $installPath = [IO.Path]::GetFullPath($InstallDirectory).TrimEnd('\','/')
 if ($installPath -eq [IO.Path]::GetPathRoot($installPath).TrimEnd('\','/') -or $installPath -eq [Environment]::GetFolderPath('UserProfile')) { throw 'Choose a dedicated K Shell installation folder.' }
@@ -54,12 +71,14 @@ try {
     throw
 }
 $record = [ordered]@{ application = 'K Shell'; version = $manifest.version; executable = $installedExecutable }
+Show-KShellProgress 55 'Installed executable'
 [IO.File]::WriteAllText($markerPath, ($record | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Install-KShellProfile.ps1') -Destination (Join-Path $installPath 'Install-KShellProfile.ps1') -Force
 foreach ($document in @('LICENSE','THIRD-PARTY-NOTICES.txt','README.txt')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $document) -Destination (Join-Path $installPath $document) -Force
 }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'licenses') -Destination $installPath -Recurse -Force
+Show-KShellProgress 70 'Installed notices and guides'
 if (-not $NoTerminalProfile) {
     $profileArguments = @{ Executable = $installedExecutable; FontFace = $FontFace }
     if ($TerminalProfilePath) { $profileArguments.OutputPath = $TerminalProfilePath }
@@ -84,3 +103,6 @@ if ($PathScope -ne 'None') {
 Write-Output "Installed K Shell $($manifest.version): $installedExecutable"
 if (-not $NoTerminalProfile) { Write-Output 'Close and reopen Windows Terminal, then select K Shell from the profile dropdown.' }
 Write-Output 'Portable/direct launch also works by running the installed kshell.exe.'
+Show-KShellProgress 100 'Installation complete'
+& $installedExecutable --welcome
+if ($LASTEXITCODE -ne 0) { throw 'K Shell was copied, but the welcome check failed. Run kshell.exe --help to diagnose.' }

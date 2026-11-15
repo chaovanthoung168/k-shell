@@ -24,6 +24,33 @@ Terminal's profile menu. No administrator access, Rust, WSL, or new fonts are
 required. The command uses a process-only execution policy; it does not change
 your saved policy. PowerShell runs setup only, never K Shell's runtime/parser.
 
+Setup displays a loading bar that fills from **right to left**, followed by a
+rainbow ASCII **K Shell** logo and **Welcome to K Shell** after installation
+succeeds. Redirected output uses plain stage messages; `-NoAnimation` disables
+the animation when running the downloaded script. Interactive sessions also
+show the welcome banner. `kshell --welcome` previews it explicitly.
+
+A fresh installation uses the original **default** prompt. No optional theme is
+installed until you choose one. Inside K Shell, type `theme`, use **Up/Down** to
+preview a style, then **Enter** to install and use it; **Esc** or **Ctrl+C** cancels.
+The five optional designs are **powerline**, **atomic**, **bubblesline**, **cert**,
+and **negligible**, inspired by the supplied terminal references. Installation is
+offline, from designs bundled into K Shell; it downloads no scripts or fonts.
+Your selected design is saved for future sessions. Existing selections survive upgrades.
+
+For command-based setup, use:
+
+```text
+theme list
+theme install atomic
+theme atomic
+theme default
+```
+
+`theme default` saves the original prompt again. Themes use the real current
+directory, username and Git HEAD when available; previews use labelled sample
+context. They never invent installed tool versions, battery levels or Git status.
+
 The bootstrap downloads the latest stable [GitHub release](https://github.com/chaovanthoung168/k-shell/releases/latest),
 checks the ZIP's SHA256 before extraction, and installs into
 `%LOCALAPPDATA%\Programs\KShell`. It adds this directory to your **user** PATH,
@@ -36,7 +63,7 @@ To inspect setup or choose a version and destination, download `install.ps1` fir
 ```powershell
 Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 -OutFile install.ps1
 Get-Content .\install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.2
 ```
 
 Options: `-InstallDirectory 'D:\Apps\KShell'`, `-NoTerminalProfile`,
@@ -56,7 +83,7 @@ Windows x64 distribution from PowerShell:
 .\scripts\Build-Release.ps1
 ```
 
-Share `target/packages/KShell-0.1.1-windows-x64.zip` and its `.sha256` file.
+Share `target/packages/KShell-0.1.2-windows-x64.zip` and its `.sha256` file.
 The ZIP contains a release executable, a per-user `Install.ps1`, a portable-aware
 Terminal-profile installer, a quick-start guide, an executable checksum manifest
 and application/dependency license texts. It contains no personal history, local
@@ -82,8 +109,8 @@ Native programs such as Git, Nano, Node/npm and VS Code are optional,
 separate installations. Release smoke checks:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.1-windows-x64.zip
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.1-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.2-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.2-windows-x64.zip
 ```
 
 Maintainers: update the Cargo version, commit, then push a matching `vMAJOR.MINOR.PATCH`
@@ -545,7 +572,7 @@ and [fragment extensions](https://learn.microsoft.com/en-us/windows/terminal/jso
 The profile launches K Shell directly with:
 
 ```text
-kshell --theme midnight --icons nerd --suggestions soft
+kshell --icons nerd --suggestions soft
 ```
 
 Startup appearance flags override environment choices and must precede `-c`
@@ -576,11 +603,18 @@ theme suggestions underline
 theme reset
 ```
 
-`theme` shows your current choices; Tab completes theme names, icon modes and
-suggestion styles.
-Changes apply to the next prompt and subsequent listings in this session.
-`theme reset` restores Ocean, standard Unicode icons and soft suggestions. These commands do not
-write a settings file. To choose startup defaults, set these environment values
+`theme` opens the interactive picker. `theme status` shows the current prompt,
+palette, icon mode and suggestion style; `theme list` lists available designs.
+Tab completes theme names, `theme install` names, icon modes and suggestion styles.
+Prompt installation receipts and the saved selection live in `%APPDATA%\kshell`
+(home fallback `.kshell`); `KSHELL_CONFIG_DIR` overrides that directory and an
+empty value disables persistence. Startup only reads this data in interactive
+sessions. `theme <design>` requires that design to be installed first.
+
+Palette, icon and suggestion changes apply to the next prompt and subsequent
+listings for this session. `theme reset` restores the original prompt, Ocean,
+standard Unicode icons and soft suggestions for this session; `theme default`
+saves the original prompt across sessions. To choose startup palette defaults, set these environment values
 in PowerShell before launching K Shell (or in your PowerShell profile):
 
 ```powershell
@@ -633,8 +667,8 @@ stream and language features.
   these characters remain literal. Shell-local variables, `export`, and `unset`
   are not implemented.
 - `grep`, `find`, `which`, aliases, scripts, variable-name
-  completion, full argument/operator syntax highlighting, custom prompt templates and persistent theme
-  configuration files remain unimplemented.
+  completion, full argument/operator syntax highlighting and user-authored custom
+  prompt templates remain unimplemented. Bundled prompt selection is persistent.
 - When feeding commands through redirected stdin, the line reader can buffer
   later input. Use `-c` when a native program needs to consume redirected stdin;
   the command-input and child-input handoff in line mode is not implemented yet.

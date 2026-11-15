@@ -9,6 +9,8 @@ $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('kshell-installer-test-' + [Gu
 [IO.Directory]::CreateDirectory($testRoot) | Out-Null
 $previousPath = $env:PATH
 $previousUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+$previousThemeConfig = $env:KSHELL_CONFIG_DIR
+$env:KSHELL_CONFIG_DIR = Join-Path $testRoot 'private-theme-config'
 function Assert-True($Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 function Assert-Rejected([scriptblock]$Action, [string]$Message) {
     $rejected = $false
@@ -18,7 +20,9 @@ function Assert-Rejected([scriptblock]$Action, [string]$Message) {
 try {
     $install = Join-Path $testRoot 'installed shell with spaces'
     $profile = Join-Path $testRoot 'private terminal\kshell.json'
-    & $bootstrap -Archive $Archive -InstallDirectory $install -TerminalProfilePath $profile -FontFace Consolas -PathScope Process
+    $setupOutput = & $bootstrap -Archive $Archive -InstallDirectory $install -TerminalProfilePath $profile -FontFace Consolas -PathScope Process -NoAnimation
+    Assert-True (($setupOutput -join "`n").Contains('Welcome to K Shell')) 'Bootstrap did not display the success welcome.'
+    Assert-True (-not (Test-Path -LiteralPath $env:KSHELL_CONFIG_DIR)) 'Setup installed optional theme configuration.'
     $executable = Join-Path $install 'kshell.exe'
     Assert-True (Test-Path -LiteralPath $profile) 'Bootstrap did not create the requested private Terminal profile.'
     Assert-True ((Get-Command kshell.exe).Source -eq $executable) 'Installed shell cannot be found on process PATH.'
@@ -85,6 +89,7 @@ try {
     Write-Output 'Installer checks passed: verified local/online install, version selection, executable, private profile, process PATH, idempotent upgrade, missing assets, checksum rejection and archive traversal rejection.'
 } finally {
     $env:PATH = $previousPath
+    $env:KSHELL_CONFIG_DIR = $previousThemeConfig
     $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     $cleanup = [IO.Path]::GetFullPath($testRoot)
     if (-not $cleanup.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($cleanup) -notmatch '^kshell-installer-test-[0-9a-f]{32}$') { throw 'Refusing unsafe test cleanup.' }

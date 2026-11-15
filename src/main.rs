@@ -13,6 +13,12 @@ fn run() -> Result<i32, ShellError> {
     let (mut palette, mut icons, mut suggestions) = (None, None, None);
     while let Some(arg) = args.next() {
         match arg.to_str() {
+            Some("--welcome") => {
+                let console = kshell::platform::console::ConsoleOutput::enable();
+                interactive::welcome::write(&mut io::stdout(), console.colors_enabled(), 80)
+                    .map_err(|error| ShellError::new(format!("welcome: {error}"), 1))?;
+                return Ok(0);
+            }
             Some("--theme") => {
                 palette = Some(
                     args.next()
@@ -97,6 +103,12 @@ fn run() -> Result<i32, ShellError> {
         appearance.suggestions = suggestions;
     }
     let mut state = ShellState::new(cwd).with_appearance(appearance);
+    if interactive && let Some(store) = kshell::themes::ThemeStore::from_environment() {
+        state = state.with_appearance(Appearance {
+            prompt: store.selected(),
+            ..appearance
+        });
+    }
     if let Some(command) = command {
         return state
             .execute(&command, &mut output)

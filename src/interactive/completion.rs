@@ -57,7 +57,11 @@ pub fn complete(
             .filter(|token| token.span.end <= start)
             .count();
         let choices: &[&str] = if argument == 0 {
-            &["ocean", "dusk", "midnight", "icons", "suggestions", "reset"]
+            &["ocean", "dusk", "midnight", "icons", "suggestions", "reset", "default", "powerline", "atomic", "bubblesline", "cert", "negligible", "list", "install", "status"]
+        } else if argument == 1 && tokens.get(1).is_some_and(
+            |token| matches!(&token.kind, TokenKind::Word(word) if word.literal() == "install"),
+        ) {
+            &["powerline", "atomic", "bubblesline", "cert", "negligible"]
         } else if argument == 1
             && tokens.get(1).is_some_and(
                 |token| matches!(&token.kind, TokenKind::Word(word) if word.literal() == "icons"),

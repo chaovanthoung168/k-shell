@@ -1,3 +1,9 @@
+K Shell 0.1.2 adds right-to-left setup loading, a K Shell ASCII welcome and five
+optional prompt designs: Powerline, Atomic, Bubblesline, Cert and Negligible.
+Fresh installations use the original default prompt. Type `theme`, preview with
+Up/Down and press Enter to install and save a style; Esc or Ctrl+C cancels.
+Themes install offline, and the selected design returns in new sessions.
+
 Install K Shell on Windows 10/11 x64 from PowerShell:
 
 ```powershell

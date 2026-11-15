@@ -308,14 +308,24 @@ Guidelines:
   Indicate prompt failure with the marker color only; never print numeric exit
   codes in the prompt. Preserve actual exit statuses in the runtime.
 - Appearance settings live in `presentation::Appearance`, owned by `ShellState`
-  and passed explicitly in `OutputFormat` by the host. `theme` changes session
-  palette/icon choices; interactive startup reads `KSHELL_THEME`/`KSHELL_ICONS`.
+  and passed explicitly in `OutputFormat` by the host. `theme` requests a
+  `ChooseTheme` host action only for interactive output; plain execution shows
+  settings. The native menu reads console key events with RAII input-mode restore,
+  never a second line editor. Up/Down preview, Enter installs/selects and
+  Esc/Ctrl+C cancel. Palette/icon choices remain session-only; interactive startup
+  reads `KSHELL_THEME`/`KSHELL_ICONS`.
   Standard Unicode icons are the default; Nerd Font glyphs are opt-in. Decorate
   terminal labels only, outside filename quoting, and include icons in Unicode
   cell-width calculations. Do not add icons to completion replacements, native
   command arguments or plain output. Keep prompt visible text identical with
   and without styling for every palette/icon mode. No font installation or
-  settings-file persistence is performed by `theme`.
+  arbitrary theme scripts are loaded. `themes::ThemeStore` installs built-in data
+  receipts on explicit request and saves prompt selection under APPDATA/kshell
+  (home fallback .kshell, override KSHELL_CONFIG_DIR). A fresh session creates no
+  files and uses Default. Startup loads a saved installed selection only for
+  interactive use; tests always pass private roots. No network or new dependency
+  is needed for prompt installation. Rendering escapes terminal controls and
+  reads Git HEAD locally without spawning Git or claiming repository status.
   Midnight is an opt-in palette coordinated with the Windows Terminal fragment
   installer in `contrib/windows-terminal`. The CLI initializes interactive
   appearance from startup environment settings, then applies explicit
@@ -323,6 +333,10 @@ Guidelines:
   Fonts/background/padding belong to Terminal profiles, never shell ANSI output.
   The installer adds only its own backed-up fragment, with no font installation,
   global default-profile change or general-purpose shell wrapper for K Shell.
+  The profile no longer forces the Midnight palette. Setup progress fills from
+  right to left after real stages; redirected/NoAnimation runs use plain messages.
+  Interactive startup and successful package setup show a K Shell ASCII welcome;
+  explicit --welcome previews it, while normal batch/-c execution stays clean.
 - Implement persistent history and up/down navigation.
 - `history [count]` renders a read-only snapshot of the editor's accepted entries,
   including saved history loaded at interactive startup. Refresh that bounded

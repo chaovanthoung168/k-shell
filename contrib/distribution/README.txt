@@ -8,6 +8,17 @@ QUICK START (PORTABLE)
 2. Double-click kshell.exe, or run .\kshell.exe from PowerShell.
 3. Type help to list commands. Type exit to leave K Shell.
 
+WELCOME / OPTIONAL THEMES
+Setup shows right-to-left loading and a K Shell ASCII welcome after success.
+Pass -NoAnimation to suppress setup animation. The default prompt is used first;
+no optional design is installed automatically. Type theme, use Up/Down to preview
+Powerline, Atomic, Bubblesline, Cert or Negligible, and Enter to install and use.
+Esc or Ctrl+C cancels without changing settings. Installation works offline.
+Your choice is saved in %APPDATA%\kshell (home fallback .kshell).
+Command alternative: theme install atomic, then theme atomic.
+Use theme default to save the original prompt, or theme status to inspect choices.
+No fonts or third-party prompt engines are installed.
+
 INSTALL FOR YOUR ACCOUNT (NO ADMIN REQUIRED)
 1. Open PowerShell in the extracted folder.
 2. Run:
@@ -42,7 +53,7 @@ the latest GitHub release, verifies its ZIP checksum, and adds user PATH by defa
    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 | iex"
 If the profile is missing, restart all Terminal windows. You can also add an
 empty profile in Terminal Settings and select the installed kshell.exe, using:
-   kshell.exe --theme midnight --icons unicode --suggestions soft
+   kshell.exe --icons unicode --suggestions soft
 
 TRY THESE COMMANDS INSIDE K SHELL (ONE LINE AT A TIME)
    pwd
@@ -70,6 +81,8 @@ History uses %APPDATA%\mysh\history.txt for compatibility. It is not part of thi
 ZIP. To remove the application, close K Shell and remove its installation folder
 and its K Shell Terminal fragment folder. If added, remove the installation folder
 from your user PATH in Windows Environment Variables. Keep your history if wanted.
+Optional prompt receipts and selection are in %APPDATA%\kshell; retain them to
+reuse your choice on reinstall, or remove that folder to reset customization.
 
 SHARING / VERIFICATION
 Share the original ZIP and its matching .sha256 file. In the ZIP's download

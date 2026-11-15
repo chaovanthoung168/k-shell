@@ -8,6 +8,7 @@ pub mod console;
 pub mod curl;
 pub mod filesystem;
 pub mod interrupt;
+pub mod menu;
 pub mod nano;
 pub mod npm;
 pub mod open;
