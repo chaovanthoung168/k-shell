@@ -347,6 +347,13 @@ Guidelines:
   Noninteractive execution never loads user history; no clear/replay action is
   implied by the listing command.
 - Add Tab completion for commands, filesystem paths and environment variables.
+- `commands::help` owns the static command/alias/group catalogue, topic validation
+  and stream-based help rendering. Default help is a compact task overview;
+  `help <command>` shows usage/examples, and groups/all/shortcuts provide focused
+  views. Completion and suggestion validation share those topics without file
+  discovery or executing external tools. Apply explicit OutputFormat palette and
+  terminal capabilities, wrap descriptions, stack narrow rows and keep batch
+  output plain. Tests cover every builtin/alias and narrow layouts.
 - Keep completion providers independent and non-blocking where practical.
 - Interactive suggestion highlighting belongs in `interactive::highlight`. Use the
   shared parser on typed text plus suggestion and preserve visible text;

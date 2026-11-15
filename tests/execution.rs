@@ -45,7 +45,7 @@ fn executable_help_usage_and_diagnostics_use_k_shell_branding() {
     assert!(
         String::from_utf8(shell("help").stdout)
             .unwrap()
-            .starts_with("K Shell\nCommands:")
+            .starts_with("  K Shell / Help\n")
     );
 }
 

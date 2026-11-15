@@ -8,6 +8,7 @@ use crate::{
 };
 
 mod files;
+mod help;
 mod history;
 mod listing;
 mod system;
@@ -37,7 +38,8 @@ pub(crate) fn valid_preview_syntax(args: &[String]) -> Option<bool> {
     let operands = &args[1..];
     Some(match args[0].as_str() {
         "echo" => true,
-        "pwd" | "clear" | "help" => operands.is_empty(),
+        "pwd" | "clear" => operands.is_empty(),
+        "help" => help::valid_syntax(operands),
         "cd" => {
             operands.len() <= 1
                 && operands
@@ -159,47 +161,13 @@ pub fn run(
             };
             platform::open::OpenRequest::new(std::path::Path::new(target), &state.cwd)?.launch()?;
         }
-        "help" => {
-            if args.len() != 1 {
-                return Err(ShellError::new("usage: help", 2));
-            }
-            writeln!(
-                output,
-                concat!(
-                    "K Shell\nCommands: {}\n",
-                    "ls [-al] [path ...] (colored columns in a terminal; -l for details)\n",
-                    "tree [-ad] [-L depth] [directory]: show folder structure\n",
-                    "mkdir [-p] directory ...\ntouch file ...\ncat [file ...]\n",
-                    "create [--] file ...: create new empty files; never overwrite\n",
-                    "write [--] file text ...: create or replace UTF-8 text (adds a newline)\n",
-                    "append [--] file text ...: append UTF-8 text (adds a newline)\n",
-                    "nano file: edit in GNU nano (when installed); Ctrl+O, Enter saves; Ctrl+X exits\n",
-                    "cp / copy [-r] source destination: copy without overwriting\n",
-                    "mv / move source destination: move without overwriting\n",
-                    "rename / update source new-name: rename in the same folder\n",
-                    "rm / delete [-rf] path ...: permanently delete (-r for folders; -f ignores missing)\n",
-                    "sysinfo (alias: specs): show OS, current user, CPU, GPU, RAM and local drive space\n",
-                    "ssh [options] user@host: connect using native OpenSSH Client\n",
-                    "curl [options] URL: make requests/download files using native curl\n",
-                    "ssh -p 2222 user@host: connect on a custom port; exit leaves the server\n",
-                    "open [--] file: open media/documents with the Windows default app\n",
-                    "code .: open this folder in VS Code (when installed)\n",
-                    "npm run dev: run a package script using Node.js/npm (when installed)\n",
-                    "npx [arguments]: launch npm's package runner (when installed)\n",
-                    "clear: clear the terminal screen\n",
-                    "history [count]: list saved/session commands, optionally only the last count\n",
-                    "theme: Up/Down picker for 5 optional designs; Enter installs and saves\n",
-                    "theme list | install <name> | <name> | default; theme ocean|dusk|midnight\n",
-                    "theme icons unicode|nerd|off: choose prompt and file icons\n",
-                    "theme suggestions soft|bold|underline: style suggestion previews\n",
-                    "Tab: completion; Right: accept suggestion; Up/Down: history\n",
-                    "Pipes, redirection, and variable expansion are not implemented yet."
-                ),
-                COMMAND_NAMES.join(", ")
-            )
-            .map_err(|error| ShellError::new(format!("help: {error}"), 1))?;
-        }
+        "help" => help::run(&args[1..], output, format)?,
         _ => return utilities::run(args, &state.cwd, output, format),
     }
     Ok(Some(outcome))
+}
+
+/// Static help topics for completion; never scans files or launches tools.
+pub(crate) fn help_topics() -> impl Iterator<Item = &'static str> {
+    help::topics()
 }

@@ -63,7 +63,7 @@ To inspect setup or choose a version and destination, download `install.ps1` fir
 ```powershell
 Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 -OutFile install.ps1
 Get-Content .\install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.4
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.5
 ```
 
 Options: `-InstallDirectory 'D:\Apps\KShell'`, `-NoTerminalProfile`,
@@ -83,7 +83,7 @@ Windows x64 distribution from PowerShell:
 .\scripts\Build-Release.ps1
 ```
 
-Share `target/packages/KShell-0.1.4-windows-x64.zip` and its `.sha256` file.
+Share `target/packages/KShell-0.1.5-windows-x64.zip` and its `.sha256` file.
 The ZIP contains a release executable, a per-user `Install.ps1`, a portable-aware
 Terminal-profile installer, a quick-start guide, an executable checksum manifest
 and application/dependency license texts. It contains no personal history, local
@@ -109,8 +109,8 @@ Native programs such as Git, Nano, Node/npm and VS Code are optional,
 separate installations. Release smoke checks:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.4-windows-x64.zip
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.4-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.5-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.5-windows-x64.zip
 ```
 
 Maintainers: update the Cargo version, commit, then push a matching `vMAJOR.MINOR.PATCH`
@@ -278,7 +278,8 @@ exit 0
   current input and cursor. Clearing works with `NO_COLOR` and emits nothing
   when redirected or used with `-c`. Command history remains available with Up;
   clearing the display does not erase the history file.
-  `help` lists the available commands and key bindings. Utilities reject unknown
+  `help` groups commands by task; `help <command>` shows syntax and examples.
+  Utilities reject unknown
   flags; `--` ends flag parsing for filenames beginning with `-`.
 - Native programs run through `std::process::Command`, inherit the environment
   and console streams, and receive arguments individually. Built-ins write
@@ -464,6 +465,28 @@ Automated curl checks use `-q` to disable user configuration and contact only a
 test-owned loopback server, with private temporary output files; they never
 contact external services.
 
+## Finding commands with help
+
+`help` shows a compact overview grouped into navigation, reading/writing files,
+file actions, session commands, customization, computer information and external
+tools. Terminal headings and labels follow your palette; narrow windows use
+stacked rows and wrapped descriptions. Batch output stays plain.
+
+```text
+help
+help ls
+help files
+help copy
+help theme
+help shortcuts
+help all
+```
+
+Command help includes usage, supported options, short examples and related groups.
+Aliases such as `copy` and `cp` share the same page. Tab completes help topics.
+`help all` lists descriptions for every group; `help tools` describes external
+programs without launching or installing them.
+
 ## Suggestions and keyboard shortcuts
 
 In an interactive terminal:
@@ -504,7 +527,8 @@ In an interactive terminal:
 - Command completion uses the typed prefix and puts built-ins first: `cle` +
   **Tab** inserts `clear `. Grey hints wait until you type an argument prefix;
   completing a command does not immediately suggest an unrelated file. Commands
-  such as `clear`, `pwd`, `help`, and `exit` do not offer file arguments.
+  such as `clear`, `pwd`, and `exit` do not offer file arguments. `help` completes
+  static command/group topics instead of files.
 - Press **Up/Down** for command history, **Ctrl+R** to search history, **Ctrl+L**
   to clear the screen, **Ctrl+C** to cancel the input line, and **Ctrl+D** on an
   empty line to exit. During `npm run dev`, **Ctrl+C** stops the server normally

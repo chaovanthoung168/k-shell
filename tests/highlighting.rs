@@ -308,6 +308,8 @@ fn argument_suggestions_use_the_complete_command_status() {
     let helper = helper(temp.path());
     for (typed, full, valid) in [
         ("echo h", "echo hello", true),
+        ("help l", "help ls", true),
+        ("help no", "help no-such-topic", false),
         ("cd so", "cd something", true),
         ("kshell-unknown a", "kshell-unknown argument", false),
     ] {

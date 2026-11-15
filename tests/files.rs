@@ -74,7 +74,7 @@ fn create_preflights_operands_and_never_overwrites_existing_entries() {
         );
     }
     let mut output = Vec::new();
-    state.execute("help", &mut output).unwrap();
+    state.execute("help create", &mut output).unwrap();
     assert!(
         String::from_utf8(output)
             .unwrap()

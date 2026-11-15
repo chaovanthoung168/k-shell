@@ -1,6 +1,8 @@
-K Shell 0.1.4 restores the original rainbow colors on the reference-matched
-K SHELL outline logo, with Welcome to K Shell underneath. Red highlighting for
-unknown typed command names and interactive command errors is preserved. It includes the
+K Shell 0.1.5 redesigns help with a compact task overview, readable command groups,
+palette-aware headings, narrow-window layouts and examples. Try `help ls`,
+`help files`, `help theme`, `help shortcuts` or `help all`; Tab completes topics.
+The rainbow K SHELL welcome and red command/error highlighting remain available,
+along with the
 right-to-left setup loading and five optional prompt designs introduced in 0.1.2:
 Powerline, Atomic, Bubblesline, Cert and Negligible.
 Fresh installations use the original default prompt. Type `theme`, preview with

@@ -48,6 +48,25 @@ pub fn complete(
     };
     if !command_position
         && tokens.first().is_some_and(
+            |token| matches!(&token.kind, TokenKind::Word(word) if word.literal() == "help"),
+        )
+    {
+        let has_topic = tokens.iter().skip(1).any(|token| token.span.end <= start);
+        let candidates = if has_topic {
+            Vec::new()
+        } else {
+            crate::commands::help_topics()
+                .filter(|name| starts_with(name, &prefix))
+                .map(|name| Pair {
+                    display: name.to_owned(),
+                    replacement: format!("{name} "),
+                })
+                .collect()
+        };
+        return (start, candidates);
+    }
+    if !command_position
+        && tokens.first().is_some_and(
             |token| matches!(&token.kind, TokenKind::Word(word) if word.literal() == "theme"),
         )
     {
