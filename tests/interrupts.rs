@@ -672,6 +672,21 @@ fn command_color_probe() -> io::Result<()> {
     wait_until("color test prompt ready", || {
         screen_text().is_ok_and(|s| s.matches('›').count() > prompts_before)
     })?;
+    let welcomes_before = screen_text()?.matches("Welcome to K Shell").count();
+    type_command("kshell")?;
+    wait_until("welcome command is recognized while typing", || {
+        text_attributes("kshell").is_ok_and(|cells| cells.iter().all(|cell| *cell != red))
+    })?;
+    type_command("\r")?;
+    wait_until(
+        "kshell shows the welcome and returns to the same prompt",
+        || {
+            screen_text().is_ok_and(|s| {
+                s.matches("Welcome to K Shell").count() > welcomes_before
+                    && s.matches('›').count() > prompts_before + 1
+            })
+        },
+    )?;
     type_command("cls")?;
     wait_until("unknown typed command is red without a hint", || {
         text_attributes("cls").is_ok_and(|cells| cells.iter().all(|cell| *cell == red))

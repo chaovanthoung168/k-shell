@@ -1,6 +1,8 @@
 use std::io::{self, Write};
 use std::path::Path;
 
+pub mod welcome;
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Palette {
     #[default]

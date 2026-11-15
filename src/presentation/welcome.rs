@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-/// Outline lettering matched to the supplied reference. Color is confined to
+/// Shared outline lettering matched to the supplied reference. Color is confined to
 /// the logo; normal welcome text uses the terminal's foreground.
 pub const LOGO: &[&str] = &[
     " _  __   ____  _   _ _____ _     _     ",

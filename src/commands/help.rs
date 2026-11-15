@@ -178,6 +178,14 @@ const ENTRIES: &[Entry] = &[
     ),
     command!(
         "session",
+        ["kshell"],
+        "kshell [--welcome]",
+        "Show the K Shell welcome banner again.",
+        ["Displays the rainbow logo without starting another shell or changing your folder."],
+        ["kshell"]
+    ),
+    command!(
+        "session",
         ["exit"],
         "exit [code]",
         "Leave K Shell.",

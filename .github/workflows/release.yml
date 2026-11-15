@@ -8,7 +8,7 @@ on:
       tag:
         description: Existing version tag to release (must match Cargo.toml)
         required: true
-        default: v0.1.5
+        default: v0.1.6
 
 env:
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}

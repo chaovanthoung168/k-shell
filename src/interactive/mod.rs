@@ -24,7 +24,7 @@ pub mod prompt;
 mod screen;
 pub mod theme_picker;
 mod validation;
-pub mod welcome;
+pub use crate::presentation::welcome;
 use completion::ShellHelper;
 
 impl Helper for ShellHelper {}

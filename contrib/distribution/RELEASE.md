@@ -1,4 +1,6 @@
-K Shell 0.1.5 redesigns help with a compact task overview, readable command groups,
+K Shell 0.1.6 adds the `kshell` builtin: type it inside K Shell to display the
+rainbow welcome banner again and return to your current prompt. No PATH setup or
+nested shell is needed. It includes the compact help overview, readable groups,
 palette-aware headings, narrow-window layouts and examples. Try `help ls`,
 `help files`, `help theme`, `help shortcuts` or `help all`; Tab completes topics.
 The rainbow K SHELL welcome and red command/error highlighting remain available,

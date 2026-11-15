@@ -16,6 +16,7 @@ mod text;
 mod theme;
 mod tree;
 mod utilities;
+mod welcome;
 
 /// Plain by default. Only the interactive host supplies terminal capabilities;
 /// utilities never guess whether a provided memory/file stream is a console.
@@ -28,8 +29,8 @@ pub struct OutputFormat {
 
 pub const COMMAND_NAMES: &[&str] = &[
     "append", "cat", "cd", "clear", "copy", "cp", "create", "delete", "echo", "exit", "help",
-    "history", "ls", "mkdir", "move", "mv", "open", "pwd", "rename", "rm", "specs", "sysinfo",
-    "theme", "touch", "tree", "update", "write",
+    "history", "kshell", "ls", "mkdir", "move", "mv", "open", "pwd", "rename", "rm", "specs",
+    "sysinfo", "theme", "touch", "tree", "update", "write",
 ];
 
 /// Preview argument syntax only. Uses utility/tree parsers without performing
@@ -40,6 +41,7 @@ pub(crate) fn valid_preview_syntax(args: &[String]) -> Option<bool> {
         "echo" => true,
         "pwd" | "clear" => operands.is_empty(),
         "help" => help::valid_syntax(operands),
+        "kshell" => welcome::valid_syntax(operands),
         "cd" => {
             operands.len() <= 1
                 && operands
@@ -88,6 +90,7 @@ pub fn run(
         action: ShellAction::Continue,
     };
     match args[0].as_str() {
+        "kshell" => welcome::run(&args[1..], output, format)?,
         "theme" => {
             outcome.action = theme::run(&args[1..], state, output, format.terminal_width.is_some())?
         }

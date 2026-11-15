@@ -337,6 +337,11 @@ Guidelines:
   right to left after real stages; redirected/NoAnimation runs use plain messages.
   Interactive startup and successful package setup show a K Shell ASCII welcome;
   explicit --welcome previews it, while normal batch/-c execution stays clean.
+  The `kshell` builtin explicitly prints the same welcome to its supplied output
+  stream without starting another shell or relying on PATH. The shared renderer
+  is in `presentation::welcome`, re-exported through `interactive::welcome` for
+  compatibility. Honor OutputFormat width/color, with plain batch output; normal
+  commands never receive an implicit banner. `kshell --welcome` is also accepted.
 - Implement persistent history and up/down navigation.
 - `history [count]` renders a read-only snapshot of the editor's accepted entries,
   including saved history loaded at interactive startup. Refresh that bounded

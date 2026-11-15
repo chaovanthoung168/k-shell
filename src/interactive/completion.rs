@@ -107,7 +107,7 @@ pub fn complete(
         );
     }
     if !command_position && tokens.first().is_some_and(|token| {
-        matches!(&token.kind, TokenKind::Word(word) if matches!(word.literal().as_str(), "clear" | "pwd" | "help" | "history" | "exit" | "sysinfo" | "specs"))
+        matches!(&token.kind, TokenKind::Word(word) if matches!(word.literal().as_str(), "clear" | "pwd" | "help" | "history" | "exit" | "sysinfo" | "specs" | "kshell"))
     }) {
         return (start, Vec::new());
     }
