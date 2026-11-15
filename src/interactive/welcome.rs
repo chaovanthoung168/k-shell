@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
-/// Upright, spaced ASCII lettering. One white foreground and standard glyphs
-/// keep the welcome legible without fonts, executables or extra dependencies.
+/// Outline lettering matched to the supplied reference. Color is confined to
+/// the logo; normal welcome text uses the terminal's foreground.
 pub const LOGO: &[&str] = &[
     " _  __   ____  _   _ _____ _     _     ",
     "| |/ /  / ___|| | | | ____| |   | |    ",
@@ -12,12 +12,29 @@ pub const LOGO: &[&str] = &[
 
 pub fn write(output: &mut dyn Write, color: bool, width: usize) -> io::Result<()> {
     writeln!(output)?;
-    if color {
-        write!(output, "\x1b[97m")?;
-    }
     if width >= 42 {
+        let colors = [
+            "224;92;84",
+            "224;187;64",
+            "93;194;98",
+            "81;157;212",
+            "173;107;215",
+        ];
         for line in LOGO {
-            writeln!(output, "{line}")?;
+            for (column, character) in line.chars().enumerate() {
+                if color && column % 8 == 0 {
+                    write!(
+                        output,
+                        "\x1b[38;2;{}m",
+                        colors[(column / 8).min(colors.len() - 1)]
+                    )?;
+                }
+                write!(output, "{character}")?;
+            }
+            if color {
+                write!(output, "\x1b[0m")?;
+            }
+            writeln!(output)?;
         }
         writeln!(output)?;
     }
@@ -26,8 +43,5 @@ pub fn write(output: &mut dyn Write, color: bool, width: usize) -> io::Result<()
         output,
         "Type help to begin. Type theme to choose your prompt.\n"
     )?;
-    if color {
-        write!(output, "\x1b[0m")?;
-    }
     Ok(())
 }

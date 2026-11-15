@@ -25,7 +25,7 @@ required. The command uses a process-only execution policy; it does not change
 your saved policy. PowerShell runs setup only, never K Shell's runtime/parser.
 
 Setup displays a loading bar that fills from **right to left**, followed by a
-white ASCII **K SHELL** logo and **Welcome to K Shell** after installation
+rainbow ASCII **K SHELL** outline logo and **Welcome to K Shell** after installation
 succeeds. Redirected output uses plain stage messages; `-NoAnimation` disables
 the animation when running the downloaded script. Interactive sessions also
 show the welcome banner. `kshell --welcome` previews it explicitly.
@@ -63,7 +63,7 @@ To inspect setup or choose a version and destination, download `install.ps1` fir
 ```powershell
 Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 -OutFile install.ps1
 Get-Content .\install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.3
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.4
 ```
 
 Options: `-InstallDirectory 'D:\Apps\KShell'`, `-NoTerminalProfile`,
@@ -83,7 +83,7 @@ Windows x64 distribution from PowerShell:
 .\scripts\Build-Release.ps1
 ```
 
-Share `target/packages/KShell-0.1.3-windows-x64.zip` and its `.sha256` file.
+Share `target/packages/KShell-0.1.4-windows-x64.zip` and its `.sha256` file.
 The ZIP contains a release executable, a per-user `Install.ps1`, a portable-aware
 Terminal-profile installer, a quick-start guide, an executable checksum manifest
 and application/dependency license texts. It contains no personal history, local
@@ -109,8 +109,8 @@ Native programs such as Git, Nano, Node/npm and VS Code are optional,
 separate installations. Release smoke checks:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.3-windows-x64.zip
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.3-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.4-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.4-windows-x64.zip
 ```
 
 Maintainers: update the Cargo version, commit, then push a matching `vMAJOR.MINOR.PATCH`

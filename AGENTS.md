@@ -363,7 +363,8 @@ Guidelines:
   cached/builtin prefixes retain their normal foreground. Interactive command
   diagnostics use Style::Error only when stderr is a terminal and colors are
   enabled; redirected stderr and batch execution stay plain. The welcome uses
-  upright, spaced ASCII lettering in white only. `interactive::validation` must
+  reference-matched ASCII outline lettering with the original rainbow colors;
+  restore the normal foreground before the welcome text. `interactive::validation` must
   remain side-effect-free: reuse utility/tree parsers; do not run built-ins or
   arbitrary commands to validate a preview. Docker's profile covers global
   options before the subcommand, not every plugin/subcommand schema. Record

@@ -1,5 +1,6 @@
-K Shell 0.1.3 adds a clearer white ASCII welcome banner and red highlighting for
-unknown typed command names and interactive command errors. It includes the
+K Shell 0.1.4 restores the original rainbow colors on the reference-matched
+K SHELL outline logo, with Welcome to K Shell underneath. Red highlighting for
+unknown typed command names and interactive command errors is preserved. It includes the
 right-to-left setup loading and five optional prompt designs introduced in 0.1.2:
 Powerline, Atomic, Bubblesline, Cert and Negligible.
 Fresh installations use the original default prompt. Type `theme`, preview with

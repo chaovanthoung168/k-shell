@@ -188,13 +188,26 @@ fn welcome_is_explicit_or_interactive_and_uses_k_shell_branding() {
     assert!(text.contains("Welcome to K Shell"));
     assert!(!text.contains("oh my zsh"));
     assert!(!text.contains('\x1b'));
-    let mut white = Vec::new();
-    welcome::write(&mut white, true, 80).unwrap();
-    let white = String::from_utf8(white).unwrap();
-    assert_eq!(white.matches("\x1b[").count(), 2);
-    assert!(white.contains("\x1b[97m"));
-    assert!(white.ends_with("\x1b[0m"));
-    assert_eq!(white.replace("\x1b[97m", "").replace("\x1b[0m", ""), text);
+    let mut rainbow = Vec::new();
+    welcome::write(&mut rainbow, true, 80).unwrap();
+    let rainbow = String::from_utf8(rainbow).unwrap();
+    for rgb in [
+        "224;92;84",
+        "224;187;64",
+        "93;194;98",
+        "81;157;212",
+        "173;107;215",
+    ] {
+        assert!(rainbow.contains(&format!("\x1b[38;2;{rgb}m")));
+    }
+    assert_eq!(plain(&rainbow), text);
+    assert!(
+        !rainbow
+            .split("Welcome to K Shell")
+            .nth(1)
+            .unwrap()
+            .contains('\x1b')
+    );
     let mut narrow = Vec::new();
     welcome::write(&mut narrow, false, 30).unwrap();
     assert!(
