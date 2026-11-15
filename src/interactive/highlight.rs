@@ -3,9 +3,61 @@ use std::{borrow::Cow, path::Path};
 use super::validation::{self, Feedback, Verdict};
 use crate::{
     commands::COMMAND_NAMES,
+    language::lexer::{TokenKind, lex, lex_incomplete},
     platform,
     presentation::{Appearance, Style},
 };
+
+/// Unknown command names turn red without requiring a suggestion. Only the
+/// original command token is painted; quoted text and arguments stay intact.
+pub(super) fn command<'l>(
+    line: &'l str,
+    pos: usize,
+    cwd: &Path,
+    native_commands: &[String],
+    appearance: Appearance,
+    color: bool,
+) -> Cow<'l, str> {
+    if !color {
+        return Cow::Borrowed(line);
+    }
+    let tokens = lex_incomplete(line);
+    let Some(token) = tokens.first() else {
+        return Cow::Borrowed(line);
+    };
+    let TokenKind::Word(word) = &token.kind else {
+        return Cow::Borrowed(line);
+    };
+    let source = &line[token.span.clone()];
+    let name = word.literal();
+    if name.is_empty() || lex(source).is_err() || available(&name, cwd, native_commands) {
+        return Cow::Borrowed(line);
+    }
+    // `cl` can still become `clear`. Once followed by a space, that prefix is
+    // a complete command and must resolve independently.
+    let completing = token.span.end == line.len() && pos <= token.span.end;
+    let known_prefix = COMMAND_NAMES
+        .iter()
+        .any(|command| command.starts_with(&name))
+        || native_commands.iter().any(|command| {
+            if cfg!(windows) {
+                command
+                    .get(..name.len())
+                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(&name))
+            } else {
+                command.starts_with(&name)
+            }
+        });
+    if completing && known_prefix {
+        return Cow::Borrowed(line);
+    }
+    Cow::Owned(format!(
+        "{}{}{}",
+        &line[..token.span.start],
+        Style::Error.paint_in(source, true, appearance.palette),
+        &line[token.span.end..]
+    ))
+}
 
 /// Command names use the same snapshot as completion; do not scan PATH or run
 /// discovery helpers per keystroke. Explicit paths use the native resolver.
@@ -98,6 +150,10 @@ mod tests {
             palette: Palette::Dusk,
             ..Default::default()
         };
+        assert_eq!(
+            command("cls", 3, Path::new("."), &[], appearance, true),
+            Style::Error.paint_in("cls", true, Palette::Dusk)
+        );
         assert_eq!(
             hint(
                 "ho",

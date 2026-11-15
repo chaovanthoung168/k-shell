@@ -188,6 +188,20 @@ fn welcome_is_explicit_or_interactive_and_uses_k_shell_branding() {
     assert!(text.contains("Welcome to K Shell"));
     assert!(!text.contains("oh my zsh"));
     assert!(!text.contains('\x1b'));
+    let mut white = Vec::new();
+    welcome::write(&mut white, true, 80).unwrap();
+    let white = String::from_utf8(white).unwrap();
+    assert_eq!(white.matches("\x1b[").count(), 2);
+    assert!(white.contains("\x1b[97m"));
+    assert!(white.ends_with("\x1b[0m"));
+    assert_eq!(white.replace("\x1b[97m", "").replace("\x1b[0m", ""), text);
+    let mut narrow = Vec::new();
+    welcome::write(&mut narrow, false, 30).unwrap();
+    assert!(
+        !String::from_utf8(narrow)
+            .unwrap()
+            .contains(welcome::LOGO[0])
+    );
     let batch = Command::new(env!("CARGO_BIN_EXE_kshell"))
         .args(["-c", "echo hello"])
         .output()

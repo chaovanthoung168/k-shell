@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 
 use rustyline::completion::{Completer, Pair};
@@ -14,6 +14,7 @@ use crate::{
     commands::OutputFormat,
     error::ShellError,
     platform,
+    presentation::Style,
     runtime::{ShellAction, ShellState},
 };
 
@@ -93,6 +94,17 @@ impl Hinter for ShellHelper {
 }
 
 impl Highlighter for ShellHelper {
+    fn highlight<'l>(&self, line: &'l str, pos: usize) -> Cow<'l, str> {
+        highlight::command(
+            line,
+            pos,
+            &self.cwd,
+            &self.native_commands,
+            self.appearance,
+            self.colors_enabled,
+        )
+    }
+
     fn highlight_char(&self, _: &str, _: usize, _: CmdKind) -> bool {
         // Repaint on edits/deletions, cursor changes and final refresh so a
         // suggested command can switch colors immediately in either direction.
@@ -259,7 +271,17 @@ pub fn run(state: &mut ShellState) -> Result<i32, ShellError> {
             }
             Ok(_) => {}
             Err(error) => {
-                let _ = writeln!(io::stderr(), "kshell: {error}");
+                let mut errors = io::stderr();
+                let color = console.colors_enabled() && errors.is_terminal();
+                let _ = writeln!(
+                    errors,
+                    "{}",
+                    Style::Error.paint_in(
+                        &format!("kshell: {error}"),
+                        color,
+                        state.appearance().palette
+                    )
+                );
             }
         }
         if let Some(helper) = editor.helper_mut() {

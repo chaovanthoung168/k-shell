@@ -358,7 +358,12 @@ Guidelines:
   `Style::Error` for known invalid syntax/remembered failure and `Style::Muted`
   for unverified external arguments. Color the WHOLE suffix, including flags,
   rather than declaring an invalid Docker command green because docker exists.
-  Typed letters retain their normal foreground. `interactive::validation` must
+  Typed unknown command tokens are red without requiring a hint; use the shared
+  lexer source span to preserve quoting/Unicode. Known names and still-editable
+  cached/builtin prefixes retain their normal foreground. Interactive command
+  diagnostics use Style::Error only when stderr is a terminal and colors are
+  enabled; redirected stderr and batch execution stay plain. The welcome uses
+  upright, spaced ASCII lettering in white only. `interactive::validation` must
   remain side-effect-free: reuse utility/tree parsers; do not run built-ins or
   arbitrary commands to validate a preview. Docker's profile covers global
   options before the subcommand, not every plugin/subcommand schema. Record

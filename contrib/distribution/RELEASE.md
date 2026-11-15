@@ -1,5 +1,7 @@
-K Shell 0.1.2 adds right-to-left setup loading, a K Shell ASCII welcome and five
-optional prompt designs: Powerline, Atomic, Bubblesline, Cert and Negligible.
+K Shell 0.1.3 adds a clearer white ASCII welcome banner and red highlighting for
+unknown typed command names and interactive command errors. It includes the
+right-to-left setup loading and five optional prompt designs introduced in 0.1.2:
+Powerline, Atomic, Bubblesline, Cert and Negligible.
 Fresh installations use the original default prompt. Type `theme`, preview with
 Up/Down and press Enter to install and save a style; Esc or Ctrl+C cancels.
 Themes install offline, and the selected design returns in new sessions.

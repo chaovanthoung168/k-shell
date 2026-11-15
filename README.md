@@ -25,7 +25,7 @@ required. The command uses a process-only execution policy; it does not change
 your saved policy. PowerShell runs setup only, never K Shell's runtime/parser.
 
 Setup displays a loading bar that fills from **right to left**, followed by a
-rainbow ASCII **K Shell** logo and **Welcome to K Shell** after installation
+white ASCII **K SHELL** logo and **Welcome to K Shell** after installation
 succeeds. Redirected output uses plain stage messages; `-NoAnimation` disables
 the animation when running the downloaded script. Interactive sessions also
 show the welcome banner. `kshell --welcome` previews it explicitly.
@@ -63,7 +63,7 @@ To inspect setup or choose a version and destination, download `install.ps1` fir
 ```powershell
 Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 -OutFile install.ps1
 Get-Content .\install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.2
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.3
 ```
 
 Options: `-InstallDirectory 'D:\Apps\KShell'`, `-NoTerminalProfile`,
@@ -83,7 +83,7 @@ Windows x64 distribution from PowerShell:
 .\scripts\Build-Release.ps1
 ```
 
-Share `target/packages/KShell-0.1.2-windows-x64.zip` and its `.sha256` file.
+Share `target/packages/KShell-0.1.3-windows-x64.zip` and its `.sha256` file.
 The ZIP contains a release executable, a per-user `Install.ps1`, a portable-aware
 Terminal-profile installer, a quick-start guide, an executable checksum manifest
 and application/dependency license texts. It contains no personal history, local
@@ -109,8 +109,8 @@ Native programs such as Git, Nano, Node/npm and VS Code are optional,
 separate installations. Release smoke checks:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.2-windows-x64.zip
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.2-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.3-windows-x64.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.3-windows-x64.zip
 ```
 
 Maintainers: update the Cargo version, commit, then push a matching `vMAJOR.MINOR.PATCH`
@@ -474,8 +474,9 @@ In an interactive terminal:
   known invalid syntax/options or a previous failed execution. Unverified external
   arguments remain slate grey. For example, typing `do` with history entries
   `docker --sdf` and `docker --version` shows `cker --sdf` entirely red and
-  `cker --version` entirely green, respectively. Typed letters keep their normal
-  foreground, including after Tab/Right accepts the suggestion. `cl` still shows
+  `cker --version` entirely green, respectively. Unknown typed command names,
+  such as `cls`, turn red even without a suggestion; their arguments retain the
+  normal foreground. Known names and editable prefixes stay neutral. `cl` still shows
   a green `ear` suggestion for `clear`.
   Built-ins, cached native commands and installed npm/npx/code/SSH adapters are
   recognized. Explicit executable paths use native lookup, including quoted
@@ -626,8 +627,9 @@ $env:KSHELL_SUGGESTION_STYLE = 'soft'
 
 Suggestions default to **soft**: regular-weight sage green for valid/previously
 successful proposals, dusty rose for known errors, and readable ash grey for
-unverified arguments. Typed input keeps the terminal's normal foreground, so the
-preview is distinct from accepted text. **Bold** uses the stronger existing
+unverified arguments. Known typed commands and arguments use the terminal's normal
+foreground; unknown command names and interactive command errors use the palette's
+red. Diagnostics sent to a file and normal batch output stay plain. **Bold** uses the stronger existing
 status colors; **underline** adds a single underline in the soft status colors.
 Trailing completion whitespace stays insertable without an extra underline.
 All three styles preserve the same command validation, source text, cursor and

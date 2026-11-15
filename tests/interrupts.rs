@@ -5,7 +5,7 @@
 
 use std::{
     fs, io,
-    io::IsTerminal,
+    io::{IsTerminal, Write},
     mem::size_of,
     os::windows::{
         ffi::OsStrExt,
@@ -28,8 +28,8 @@ use windows_sys::Win32::{
             CONSOLE_SCREEN_BUFFER_INFO, COORD, CTRL_C_EVENT, GenerateConsoleCtrlEvent,
             GetConsoleProcessList, GetConsoleScreenBufferInfo, GetConsoleTitleW, GetStdHandle,
             INPUT_RECORD, INPUT_RECORD_0, KEY_EVENT, KEY_EVENT_RECORD, KEY_EVENT_RECORD_0,
-            ReadConsoleOutputCharacterW, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-            SetConsoleCtrlHandler, WriteConsoleInputW,
+            ReadConsoleOutputAttribute, ReadConsoleOutputCharacterW, STD_INPUT_HANDLE,
+            STD_OUTPUT_HANDLE, SetConsoleCtrlHandler, WriteConsoleInputW,
         },
         JobObjects::{
             AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
@@ -95,7 +95,7 @@ fn type_command(text: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn wait_until(description: &str, predicate: impl Fn() -> bool) -> io::Result<()> {
+fn wait_until(description: &str, mut predicate: impl FnMut() -> bool) -> io::Result<()> {
     let deadline = Instant::now() + Duration::from_secs(20);
     while !predicate() {
         if Instant::now() >= deadline {
@@ -596,7 +596,7 @@ fn history_roundtrip_probe() -> io::Result<()> {
     loop {
         if let Some(status) = shell.try_wait()? {
             return if status.success() {
-                Ok(())
+                command_color_probe()
             } else {
                 Err(io::Error::other(format!(
                     "history test shell exited with {status}"
@@ -608,4 +608,91 @@ fn history_roundtrip_probe() -> io::Result<()> {
         }
         thread::sleep(Duration::from_millis(30));
     }
+}
+
+fn text_attributes(needle: &str) -> io::Result<Vec<u16>> {
+    let mut info = CONSOLE_SCREEN_BUFFER_INFO::default();
+    // SAFETY: valid buffers and borrowed console handles, only in the verified
+    // private console. Match UTF-16 cells so source byte offsets cannot drift.
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        checked(GetConsoleScreenBufferInfo(handle, &mut info))?;
+        let mut text = vec![0u16; (info.dwSize.X as usize * info.dwSize.Y as usize).min(2_000_000)];
+        let mut read = 0;
+        checked(ReadConsoleOutputCharacterW(
+            handle,
+            text.as_mut_ptr(),
+            text.len() as u32,
+            COORD { X: 0, Y: 0 },
+            &mut read,
+        ))?;
+        let needle: Vec<u16> = needle.encode_utf16().collect();
+        let index = text[..read as usize]
+            .windows(needle.len())
+            .rposition(|word| word == needle)
+            .ok_or_else(|| io::Error::other("colored console text not found"))?;
+        let mut attributes = vec![0u16; needle.len()];
+        checked(ReadConsoleOutputAttribute(
+            handle,
+            attributes.as_mut_ptr(),
+            attributes.len() as u32,
+            COORD {
+                X: (index % info.dwSize.X as usize) as i16,
+                Y: (index / info.dwSize.X as usize) as i16,
+            },
+            &mut read,
+        ))?;
+        if read != attributes.len() as u32 {
+            return Err(io::Error::other("short console attribute read"));
+        }
+        Ok(attributes)
+    }
+}
+
+fn command_color_probe() -> io::Result<()> {
+    use kshell::{platform::console::ConsoleOutput, presentation::Style};
+    let _console = ConsoleOutput::enable();
+    writeln!(
+        io::stdout(),
+        "{}",
+        Style::Error.paint("COLOR_REFERENCE_RED", true)
+    )?;
+    let red = text_attributes("COLOR_REFERENCE_RED")?[0];
+    let prompts_before = screen_text()?.matches('›').count();
+    let mut shell = Command::new(env!("CARGO_BIN_EXE_kshell"))
+        .args(["--theme", "ocean", "--icons", "off"])
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .env("TERM", "xterm-256color")
+        .env_remove("NO_COLOR")
+        .env("KSHELL_CONFIG_DIR", "")
+        .env("KSHELL_HISTORY_FILE", "")
+        .spawn()?;
+    wait_until("color test prompt ready", || {
+        screen_text().is_ok_and(|s| s.matches('›').count() > prompts_before)
+    })?;
+    type_command("cls")?;
+    wait_until("unknown typed command is red without a hint", || {
+        text_attributes("cls").is_ok_and(|cells| cells.iter().all(|cell| *cell == red))
+    })?;
+    type_command("\r")?;
+    wait_until("command-not-found error is red", || {
+        text_attributes("kshell: command not found: cls")
+            .is_ok_and(|cells| cells.iter().all(|cell| *cell == red))
+    })?;
+    type_command("echo COLOR-RECOVERY\r")?;
+    wait_until("successful output returns to normal foreground", || {
+        screen_text().is_ok_and(|s| s.matches("COLOR-RECOVERY").count() >= 2)
+            && text_attributes("COLOR-RECOVERY")
+                .is_ok_and(|cells| cells.iter().all(|cell| *cell != red))
+    })?;
+    type_command("exit 0\r")?;
+    wait_until("color test shell exits", || {
+        shell.try_wait().ok().flatten().is_some()
+    })?;
+    if !shell.wait()?.success() {
+        return Err(io::Error::other("color test shell failed"));
+    }
+    Ok(())
 }

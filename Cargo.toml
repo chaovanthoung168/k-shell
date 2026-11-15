@@ -1,6 +1,6 @@
 [package]
 name = "kshell"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 description = "K Shell, a native Windows shell built incrementally in Rust"
 license = "MIT"

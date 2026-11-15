@@ -27,6 +27,23 @@ fn helper(path: &Path) -> ShellHelper {
     helper
 }
 
+fn strip_colors(text: &str) -> String {
+    let mut chars = text.chars();
+    let mut plain = String::new();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for next in chars.by_ref() {
+                if next == 'm' {
+                    break;
+                }
+            }
+        } else {
+            plain.push(c);
+        }
+    }
+    plain
+}
+
 fn preview(helper: &ShellHelper, typed: &str, full: &str) -> (String, String) {
     let mut history = DefaultHistory::new();
     history.add(full).unwrap();
@@ -34,7 +51,7 @@ fn preview(helper: &ShellHelper, typed: &str, full: &str) -> (String, String) {
         .hint(typed, typed.len(), &Context::new(&history))
         .unwrap();
     assert_eq!(format!("{typed}{hint}"), full);
-    assert_eq!(helper.highlight(typed, typed.len()), typed);
+    assert_eq!(strip_colors(&helper.highlight(typed, typed.len())), typed);
     let colored = helper.highlight_hint(&hint).into_owned();
     (hint, colored)
 }
@@ -145,13 +162,51 @@ fn entire_suggestion_uses_full_command_status_with_quotes_and_unicode_preserved(
             paint(style, &format!("{command}{arguments}"), true)
         );
     }
-    for line in ["", "   ", "| echo hello", "'echo", "kshell-unknown"] {
+    for line in ["", "   ", "| echo hello", "'echo"] {
         assert!(matches!(
             helper.highlight(line, line.len()),
             Cow::Borrowed(_)
         ));
         assert_eq!(helper.highlight(line, line.len()), line);
     }
+}
+
+#[test]
+fn unknown_typed_command_is_red_without_a_hint_and_corrections_remove_red() {
+    let temp = TempDir::new();
+    let helper = helper(temp.path());
+    for (line, expected) in [
+        ("cls", Style::Error.paint("cls", true)),
+        (
+            "  cls argument",
+            format!("  {} argument", Style::Error.paint("cls", true)),
+        ),
+        (
+            "'ឯក-unknown' \"hello world\"",
+            format!(
+                "{} \"hello world\"",
+                Style::Error.paint("'ឯក-unknown'", true)
+            ),
+        ),
+        ("cl ", format!("{} ", Style::Error.paint("cl", true))),
+    ] {
+        assert_eq!(helper.highlight(line, line.len()), expected);
+        assert_eq!(strip_colors(&expected), line);
+    }
+    for line in [
+        "cl",
+        "clear",
+        "clear ",
+        "echo cls",
+        "  'echo' cls",
+        "'unfinished",
+    ] {
+        assert_eq!(helper.highlight(line, line.len()), line);
+    }
+    // The suffix/suggestion setting must not soften or underline typed errors.
+    let mut helper = helper;
+    helper.set_colors_enabled(false);
+    assert_eq!(helper.highlight("cls", 3), "cls");
 }
 
 #[test]
