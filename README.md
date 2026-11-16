@@ -1,822 +1,549 @@
-# K Shell (`kshell`)
+<p align="center">
+  <img src="assets/kshell-logo.png" alt="K Shell" width="420">
+</p>
 
-A native Windows shell written in Rust, with basic Linux-style commands,
-history suggestions, and Tab completion. It is not yet a Zsh-compatible shell.
-Rust edition: 2024. `rustyline` supplies terminal editing and persistent history;
-the lexer, parser, completion quoting, command dispatch, and utilities are K Shell's
-own code. Rustyline enables file history and custom key bindings; its
-`radix_trie` dependency dispatches the Ctrl+L override used for terminal clearing.
-No second editor is added. `unicode-width`
-measures filenames in terminal cells for aligned columns, and `windows-sys`
-enables console styling, default-app file opening and read-only hardware queries through native Windows APIs. Both were already transitive
-dependencies of the line editor.
+<h1 align="center">K Shell</h1>
 
-## Install on Windows
+<p align="center">
+  K Shell is a fast, customizable, open-source shell built with Rust.<br>
+  Linux-style commands, smart autocompletion and syntax highlighting, right in your Windows terminal.
+</p>
 
-Open PowerShell on Windows 10/11 x64 and run:
+<p align="center">
+  <a href="https://k-shell-windows.berrylorikeet8.chatgpt.site">Website</a> ·
+  <a href="https://k-shell-windows.berrylorikeet8.chatgpt.site/docs/">Documentation</a> ·
+  <a href="https://github.com/chaovanthoung168/k-shell/releases/latest">Download</a> ·
+  <a href="LICENSE">MIT License</a>
+</p>
+
+## Features
+
+- **Native Windows execution:** run Windows applications directly from K Shell.
+- **Linux-style commands:** navigate folders, manage files, and read or write text.
+- **Smart autocompletion:** complete commands and paths, cycle matches, and accept history suggestions.
+- **Syntax highlighting:** identify known commands, unsupported syntax, and suggestion status while typing.
+- **Customizable appearance:** choose a prompt design, color palette, icons, and suggestion style.
+- **Persistent history:** recall previous commands and search them with the keyboard.
+- **Developer tools:** install and switch managed versions with KPM in the updated source build.
+- **Native HTTP client:** send API requests and inspect JSON with `kreq` in the updated source build.
+
+K Shell targets **Windows 10/11 x64**. It has its own lexer, parser, and runtime;
+normal commands execute without a PowerShell, CMD, Git Bash, or WSL parser.
+It is an early shell with a deliberately limited command language. See
+[current limitations](#current-limitations) before using shell scripts.
+
+**Release availability:** the existing v0.1.6 download does not include KPM or
+`kreq`. To use those commands, [build the updated source](#build-from-source)
+and launch the executable you just built.
+
+## Contents
+
+- [Tech stack](#tech-stack)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Command reference](#command-reference)
+- [Package manager: KPM](#package-manager-kpm)
+- [HTTP client: kreq](#http-client-kreq)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Build from source](#build-from-source)
+- [Current limitations](#current-limitations)
+- [Contributing](#contributing)
+
+## Tech stack
+
+| Technology | Used for |
+| --- | --- |
+| Rust, edition 2024 | Shell, command language, built-ins, and native process execution. |
+| Rust standard library | Filesystem operations, process launching, streams, and shell state. |
+| `rustyline` 19 | Interactive line editing, completion, history, and custom key bindings. |
+| `windows-sys` 0.61 | Native Windows console, filesystem, registry, process, and hardware APIs. |
+| `unicode-width` 0.2 | Terminal-cell measurements for aligned text and icons. |
+| `reqwest` 0.12 + Rustls | HTTP requests with native certificate roots, without a curl dependency. |
+| Tokio 1 | One shared asynchronous network runtime for KPM and `kreq`. |
+| Serde + `serde_json` | Managed installation records, provider metadata, and JSON responses. |
+| `sha2` 0.10 + `zip` 4 | SHA-256 verification and guarded ZIP extraction for managed tools. |
+| PowerShell + GitHub Actions | Windows installation, packaging, and release automation. |
+
+The companion website uses **Next.js 16, React 19, TypeScript, and CSS**.
+Its particle artwork uses **Three.js and React Three Fiber**. The browser
+Playground is a simulation; it does not execute K Shell or install software.
+
+## Install
+
+### Install from PowerShell
+
+Open **PowerShell** on Windows 10/11 x64 and run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 | iex"
 ```
 
-Restart your terminal app, then run `kshell`, or select **K Shell** in Windows
-Terminal's profile menu. No administrator access, Rust, WSL, or new fonts are
-required. The command uses a process-only execution policy; it does not change
-your saved policy. PowerShell runs setup only, never K Shell's runtime/parser.
+Close and reopen your terminal, then run:
 
-Setup displays a loading bar that fills from **right to left**, followed by a
-rainbow ASCII **K SHELL** outline logo and **Welcome to K Shell** after installation
-succeeds. Redirected output uses plain stage messages; `-NoAnimation` disables
-the animation when running the downloaded script. Interactive sessions also
-show the welcome banner. `kshell --welcome` previews it explicitly.
-Inside K Shell, type `kshell` to show that same rainbow logo and welcome again.
-This is a built-in command: it keeps your current session and folder, and needs
-no PATH entry. `help kshell` shows its usage.
-
-A fresh installation uses the original **default** prompt. No optional theme is
-installed until you choose one. Inside K Shell, type `theme`, use **Up/Down** to
-preview a style, then **Enter** to install and use it; **Esc** or **Ctrl+C** cancels.
-The five optional designs are **powerline**, **atomic**, **bubblesline**, **cert**,
-and **negligible**, inspired by the supplied terminal references. Installation is
-offline, from designs bundled into K Shell; it downloads no scripts or fonts.
-Your selected design is saved for future sessions. Existing selections survive upgrades.
-
-For command-based setup, use:
-
-```text
-theme list
-theme install atomic
-theme atomic
-theme default
+```powershell
+kshell
 ```
 
-`theme default` saves the original prompt again. Themes use the real current
-directory, username and Git HEAD when available; previews use labelled sample
-context. They never invent installed tool versions, battery levels or Git status.
+In Windows Terminal, you can also select **K Shell** from the profile dropdown.
+No administrator access, Rust installation, WSL, or special font is required.
 
-The bootstrap downloads the latest stable [GitHub release](https://github.com/chaovanthoung168/k-shell/releases/latest),
-checks the ZIP's SHA256 before extraction, and installs into
-`%LOCALAPPDATA%\Programs\KShell`. It adds this directory to your **user** PATH,
-preserves prior executable/profile backups on upgrade, and registers a Windows
-Terminal profile. Existing history and your default Terminal profile are preserved.
-Run the same command again to update. Close existing K Shell sessions before updating.
+Setup downloads the latest stable release, verifies the ZIP's SHA-256 checksum,
+installs into `%LOCALAPPDATA%\Programs\KShell`, adds that folder to your **user
+PATH**, and registers a Windows Terminal profile. It preserves your history and
+default Terminal profile. PowerShell's execution-policy override applies only to
+setup's process. Run the same installer again to update, after closing K Shell.
 
-To inspect setup or choose a version and destination, download `install.ps1` first:
+### Customize installation
+
+Download and inspect the script before running it with options:
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/chaovanthoung168/k-shell/main/install.ps1 -OutFile install.ps1
 Get-Content .\install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Version 0.1.6
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -InstallDirectory 'D:\Apps\KShell' -PathScope None
 ```
 
-Options: `-InstallDirectory 'D:\Apps\KShell'`, `-NoTerminalProfile`,
-`-FontFace Consolas`, and `-PathScope None` (leave PATH unchanged) or `Process`
-(current setup process only). Offline installation accepts `-Archive <ZIP>` and
-its adjacent `.sha256` file; `-ChecksumFile <path>` overrides that file's location.
-The ZIP is an unsigned x64 build. Download the ZIP and checksum directly for
-portable use if preferred. See its included README for manual removal; also
-remove the K Shell folder from your user PATH if added.
+| Installer option | Meaning |
+| --- | --- |
+| `-Version <version>` | Choose a stable release, such as `0.1.6`; defaults to latest. |
+| `-InstallDirectory <path>` | Choose the installation folder. |
+| `-PathScope User` | Add K Shell to user PATH; the online installer's default. |
+| `-PathScope Process` | Change PATH only in the setup process. |
+| `-PathScope None` | Leave PATH unchanged. Launch the executable by its full path. |
+| `-NoTerminalProfile` | Skip Windows Terminal profile registration. |
+| `-FontFace <name>` | Use a font already installed on your machine. |
+| `-NoAnimation` | Use plain installation progress. |
+| `-Archive <ZIP>` | Install from a local archive and its adjacent `.sha256` file. |
+| `-ChecksumFile <path>` | Specify the local archive's checksum file explicitly. |
 
-## Build and run
+### Portable installation
 
-To share K Shell without requiring Rust on the recipient's machine, build the
-Windows x64 distribution from PowerShell:
+Download the Windows x64 ZIP and matching `.sha256` file from
+[Releases](https://github.com/chaovanthoung168/k-shell/releases/latest).
+Compare its hash with the supplied checksum:
 
 ```powershell
-.\scripts\Build-Release.ps1
+Get-FileHash .\KShell-0.1.6-windows-x64.zip -Algorithm SHA256
 ```
 
-Share `target/packages/KShell-0.1.6-windows-x64.zip` and its `.sha256` file.
-The ZIP contains a release executable, a per-user `Install.ps1`, a portable-aware
-Terminal-profile installer, a quick-start guide, an executable checksum manifest
-and application/dependency license texts. It contains no personal history, local
-settings, fonts, external application binaries or development files. The build
-uses the locked dependency graph, static MSVC CRT and remapped build paths.
-Use a fresh `-OutputDirectory` when producing another archive; an existing ZIP
-is never overwritten. Build tools are needed only on the developer's machine.
+Use the filename of your downloaded version. Extract the entire ZIP, then run
+`kshell.exe`. For a per-user installation, run the included `Install.ps1` instead.
+That packaged installer leaves PATH unchanged unless you pass `-PathScope User`.
+Releases are unsigned Windows x64 builds.
 
-Recipients extract the ZIP and either run `kshell.exe` directly, or run the
-included `Install.ps1` from PowerShell to copy it into
-`%LOCALAPPDATA%\Programs\KShell` and register a Windows Terminal profile. No admin,
-machine PATH change or font installation is required. The packaged installer
-leaves PATH unchanged unless you pass `-PathScope User` or `-PathScope Process`.
-Restart Terminal after
-installation. Font selection uses an installed Meslo Nerd Font Mono when found,
-otherwise Consolas with Unicode icons. A recipient can override `-FontFace` or
-choose `-NoTerminalProfile`. Old executable/profile copies are backed up on
-upgrade, unmarked nonempty installation folders are protected, and checksum
-failure stops before any installation. Existing sessions finish normally.
+### Uninstall
 
-The package is an unsigned Windows 10/11 x64 build, not an MSI.
-Native programs such as Git, Nano, Node/npm and VS Code are optional,
-separate installations. Release smoke checks:
+Close K Shell, remove its installation folder, and remove its K Shell Windows
+Terminal fragment at `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\K Shell`.
+If added, remove the installation folder from your user PATH in Windows
+Environment Variables. Keep your history and configuration folders if you want
+to reuse them. For KPM-managed developer tools, use `kpm uninstall` before
+removing K Shell; deleting the shell does not uninstall those tools.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Distribution.ps1 -Archive .\target\packages\KShell-0.1.6-windows-x64.zip
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Installer.ps1 -Archive .\target\packages\KShell-0.1.6-windows-x64.zip
-```
+## Quick start
 
-Maintainers: update the Cargo version, commit, then push a matching `vMAJOR.MINOR.PATCH`
-tag. `.github/workflows/release.yml` checks Rust, builds the locked Windows package,
-runs the isolated Windows PowerShell distribution/installer checks, and publishes
-the ZIP and checksum as a GitHub release. An existing release is never overwritten.
-No custom release secret is needed; the job uses GitHub's scoped workflow token.
-
-With stable Rust and the Windows MSVC build tools installed:
+Run these lines separately **inside K Shell**:
 
 ```text
-cargo build
-cargo run -- -c "echo 'hello world'"
-cargo run
-```
-
-The executable is `target/debug/kshell.exe`. Use `kshell -c <command>` to execute
-one command, or launch without arguments for an interactive REPL.
-The application and Cargo package are now named **K Shell** / `kshell`
-(formerly MyShell / `mysh`). The project folder can stay `D:\Projects\myshell`.
-The Windows terminal tab is titled `K Shell`. A compact two-line prompt shows the
-current directory with a folder icon above a mint `›` input marker, and changes after `cd`:
-
-```text
-📁 D:\My-Portfolio
-› tree -L 2
-```
-
-After a failed command, the `›` marker turns rose red without showing a numeric
-exit code. A successful command restores the mint marker.
-K Shell restores the previous terminal title when it exits. Redirected input/output
-and `-c` mode never emit prompts or change the terminal title.
-EOF returns the last command status. `exit [0-255]` exits explicitly.
-
-Inside K Shell:
-
-```text
-echo "hello world" "" end
-echo 'literal $HOME'
-cd 'C:\Program Files'
 pwd
 ls -la
+mkdir -p demo/src
+create demo/src/main.rs
+write demo/notes.txt 'Hello from K Shell'
+append demo/notes.txt 'My first project'
+cat demo/notes.txt
 tree -L 2
-sysinfo
-specs
-ssh -V
-curl --version
-mkdir -p 'my project/src'
-touch 'my project/src/main.rs'
-create 'my project/src/new.rs'
-write 'my project/notes.txt' 'Hello world'
-append 'my project/notes.txt' 'Another line'
-cat 'my project/notes.txt'
-nano 'my project/notes.txt'
-cat 'my project/src/main.rs'
-open 'D:\HER V2.mp3'
-open 'D:\Videos\movie.mp4'
-cd 'D:\My-Portfolio'
-code .
-npm --version
-npm run dev
 help
-'C:\Program Files\Git\cmd\git.exe' --version
-exit 0
 ```
 
-## Implemented behavior
+Quote paths containing spaces, for example `cd 'C:\Program Files'`.
+Backslashes remain literal, including inside quotes. Single and double quotes
+preserve spaces and empty arguments. Use `help <command>` for examples.
 
-- A separate lexer, single-command parser, runtime, built-in layer, and platform
-  executable resolver; source spans use UTF-8 byte offsets.
-- Single and double quotes preserve spaces and empty arguments. Adjacent quoted
-  and unquoted fragments form one argument. Quote context is retained in the AST.
-- **Backslashes are always literal**, including in double quotes. This preserves
-  Windows drive paths, UNC paths, and trailing directory separators. There are
-  no backslash escape sequences yet. To include a quote, use the opposite quote:
-  `echo 'a"b' "a'b"`. To include both, concatenate fragments: `echo 'a"'"'b"`.
-- `echo` writes arguments separated by spaces and a newline; every argument is
-  literal, including `-n`. `pwd` accepts no arguments. `cd [directory]` persists
-  in shell state; no argument selects `USERPROFILE` on Windows (`HOME` elsewhere).
-  `cd` flags are rejected. A failed `cd` preserves the previous directory.
-- `pwd` presents normal drive/UNC paths after `cd`, hiding Windows' internal
-  `\\?\` prefix while retaining the original native path for filesystem calls.
-- `ls [-al] [path ...]` lists sorted names without appending `/` to directories. Interactive
-  output uses vertical columns sized to the terminal, with three-cell gaps,
-  soft blue directories, mint executables/audio/links, lavender images/videos,
-  and amber archives. Detailed file metadata is muted slate. Spaces in filenames
-  are quoted and Unicode cell widths are used for alignment. `NO_COLOR` disables colors while
-  retaining columns. Redirected and `-c` output stays plain, one entry per line.
-  `-a`
-  includes dotfiles, Windows hidden entries, `.` and `..`. `-l` shows real file
-  kind (`d`, `l`, or `-`) and byte size; it does not invent Unix permission bits
-  or ownership. Symlink directories are listed as links, without recursion.
-- `mkdir [-p] directory ...` creates directories; `-p` creates missing parents
-  and accepts existing directories. `touch file ...` creates files without
-  truncation and updates access/modified times; directory timestamps and touch
-  flags are not supported yet.
-- `create [--] file ...` creates new empty files, including several names in one
-  command: `create notes.txt 'my file.txt'`. Parent directories must already
-  exist; use `mkdir -p` first when needed. Existing files, directories and links
-  are rejected without overwriting or changing their timestamps. All operands
-  are checked before creation, with exclusive file creation to handle conflicts.
-  Use `create -- -file.txt` for a name beginning with `-`. Like the other file
-  commands, it rejects Windows device/stream paths and link/reparse ancestors.
-  It creates empty files only; `touch` remains available to update timestamps.
-  Multiple-file creation is not transactional: an I/O error or concurrent change
-  can leave earlier files created.
-- `write [--] file text ...` creates a file or replaces its contents with the
-  supplied text. `append [--] file text ...` adds text at the end and creates a
-  missing file. Both write UTF-8 without a BOM and add one LF newline after the
-  text. Arguments are joined with single spaces; quote text to preserve internal
-  spacing, and use `""` for an empty word or a blank line. Flags after the filename
-  are literal text. Example: `write notes.txt 'Hello world'`, then
-  `append notes.txt 'Another line'` and `cat notes.txt`. Use
-  `write -- -notes.txt 'text'` for a filename beginning with `-`. Parent folders
-  must exist. Directory/link/reparse targets and link ancestors are rejected;
-  Windows device names and alternate streams are unsupported. The opened file
-  handle is checked before truncation. Writes are not transactional: disk/I/O
-  errors or concurrent changes may leave partial content. Completion offers
-  filenames only in the filename position; it leaves text arguments alone.
-  `write`/`append` are explicit K Shell commands; `echo text > file` redirection
-  remains unimplemented.
-- `tree [-ad] [-L depth] [--] [directory]` displays a sorted folder structure,
-  using the shell directory by default. `-L 2` limits it to two levels; `-d` shows
-  real directories only, and `-a` includes dotfiles and Windows hidden entries.
-  Flags can be combined (`tree -adL2`). Quote paths containing spaces. Branches
-  use Unicode tree characters with muted branch lines in interactive terminals.
-  It shares the `ls` palette: soft blue folders, mint executables/audio/links,
-  lavender images/videos, and amber archives. Counts and branches use muted slate.
-  Directory names have no added `/`
-  suffix. `NO_COLOR` disables coloring. Redirected and `-c` output has no ANSI colors.
-  The final counts include displayed descendants, excluding the root. Symlinks
-  and all Windows reparse points, including junctions, are leaves and never
-  traversed; a link passed as the root is rejected. `-d` excludes those leaves.
-  Use a depth limit for large folders such as projects containing `node_modules`.
-  `tree --help` shows the supported flags. No external `tree.exe` is required.
-- `cp` / `copy [-r] [--] source destination` copies one file or folder; folders
-  require `-r`. `mv` / `move [--] source destination` moves a file or folder.
-  An existing destination directory receives the source's original name.
-  `rename` / `update [--] source new-name` changes its name in the same parent
-  folder; `update` is a rename alias, not an editor or software updater.
-  Existing destination entries are never overwritten or merged. Destination
-  parents must exist. Copies include file contents and empty directories, without
-  preserving timestamps, ACLs, alternate data streams or other metadata.
-  Same-drive moves use native Windows no-replace renaming; cross-drive moves
-  copy completely before deleting the original. File copies use exclusive creation.
-- `rm` / `delete [-rf] [--] path ...` permanently deletes files; `-r` is required
-  for real directories. `-f` ignores missing paths and never bypasses protection
-  or suppresses other errors. Roots, home, the current directory and its ancestors,
-  plus Windows system/program folders and their descendants are protected from
-  deletion/moving/renaming. All deletion targets are preflighted before mutation.
-  Recursive deletion unlinks symlinks/junctions as leaves; recursive copying and
-  cross-drive moves reject links/reparse points before creating the destination.
-  Same-drive moves can rename a link as an entry. These commands reject paths
-  through link/reparse-point ancestors, Windows devices, alternate streams and
-  drive-relative paths such as `D:folder`; use `D:\folder` instead.
-  Operations stop on I/O errors and are not transactions: a failed copy may leave
-  a partial destination; deletion or cross-drive source cleanup may be partial.
-  Avoid concurrent changes to files being copied or removed.
-- `cat [file ...]` streams files byte-for-byte; no arguments or `-` reads stdin.
-  `clear` clears the interactive screen **and scrollback**, returning the prompt
-  to the top. It uses terminal sequences for cursor-home, viewport erase and
-  scrollback erase (`H`, `2J`, `3J`), with the editor's native fallback when VT
-  is unavailable. This follows Microsoft's [terminal clearing guidance](https://learn.microsoft.com/en-us/windows/console/clearing-the-screen).
-  Ctrl+L uses the same terminal clear and the editor's repaint, preserving the
-  current input and cursor. Clearing works with `NO_COLOR` and emits nothing
-  when redirected or used with `-c`. Command history remains available with Up;
-  clearing the display does not erase the history file.
-  `help` groups commands by task; `help <command>` shows syntax and examples.
-  Utilities reject unknown
-  flags; `--` ends flag parsing for filenames beginning with `-`.
-- Native programs run through `std::process::Command`, inherit the environment
-  and console streams, and receive arguments individually. Built-ins write
-  through the supplied output stream. Native process handles are waited for.
-- `nano file.txt` opens GNU nano in the current terminal when it is installed.
-  Quote names containing spaces: `nano 'my notes.txt'`. Nano creates a missing
-  file when you save it. **Ctrl+O**, then **Enter** saves; **Ctrl+X** exits to the
-  K Shell prompt. See the [GNU nano manual](https://www.nano-editor.org/dist/latest/nano.html).
-  Normal native PATH lookup has precedence. On Windows, bare `nano`/`nano.exe`
-  can also find Git for Windows' `usr/bin/nano.exe` via a PATH Git installation
-  or standard per-user/system Git locations. It launches that executable
-  directly with inherited terminal streams and unchanged arguments, never Git
-  Bash, CMD or PowerShell. Git's bundled editor uses its adjacent MSYS DLLs;
-  it remains an external application, not a K Shell built-in editor. No new
-  installation or permanent PATH change is made. Explicit paths never fall back,
-  and `.cmd`/`.bat` wrappers remain rejected. Discovery/completion never launch
-  Nano; the command-name snapshot updates at startup/after `cd`. `nano --version`
-  provides a noninteractive check. If Nano is unavailable, use a
-  [Windows build linked by GNU nano](https://www.nano-editor.org/download.php)
-  and add its directory to PATH.
-- In an interactive Windows session, Ctrl+C/Ctrl+Break keeps K Shell alive and
-  reaches foreground programs normally. When `npm run dev` or another program
-  stops, K Shell restores the folder prompt and accepts the next command. The
-  shell registers a process-local console handler for the session and removes
-  it on exit; it never sets the inherited Ctrl+C-ignore flag. Native Windows
-  `STATUS_CONTROL_C_EXIT` is reported as status 130, hidden from the prompt.
-  Programs can handle or ignore interrupts themselves (for example SSH can
-  forward Ctrl+C to its remote command); K Shell waits for the child to exit
-  rather than forcing termination. Batch/`-c` mode retains normal OS signal
-  handling. The handler does not intercept close/logoff/shutdown events.
-- `code .` opens the current shell directory in VS Code on Windows. If `code`
-  resolves to a native executable, that executable runs normally. Otherwise,
-  K Shell finds the installed VS Code CLI via its `PATH` entry or standard
-  per-user/system installation locations. The adapter launches `Code.exe` with
-  its packaged `cli.js`, sets `ELECTRON_RUN_AS_NODE=1` for that child only, and
-  passes each argument separately. It never runs `code.cmd` or a command parser.
-  Versioned VS Code installation layouts are supported by reading only the known
-  quoted installation-relative CLI path from `code.cmd` as metadata. Other batch
-  files remain unsupported. `code --version`, `code --new-window .`, quoted folder
-  paths, and other arguments are passed to VS Code's CLI. `code` is included in
-  completion when a supported installation is found. VS Code Insiders and other
-  editor wrappers do not have dedicated adapters yet.
-- `open [--] file` opens one existing media/document file with its Windows default
-  app. MP3s and videos use the player configured for their file type. Quote paths
-  containing spaces; relative paths use the shell's current directory, so use
-  an absolute path when the file is elsewhere. Tab completion includes files.
-  The command returns after the file has been handed to the app; status 0 means
-  the launch request succeeded, not that a media codec can decode the file.
-  Missing files and missing associations return status 1 with a diagnostic.
-  Choose the default player in Windows Settings > Apps > Default apps if needed.
-  This uses `ShellExecuteExW` with one native UTF-16 filename and no command-line
-  parameters, independently of normal program execution. It never delegates
-  command parsing to another shell. `.exe`, `.com`, `.cmd`, and `.bat` are rejected
-  by `open`; it is a file-association action for documents, not a program launcher.
-  Other file types are handed to their registered handlers, so open trusted files.
-  URLs and directories are not supported by this first version.
-- Windows lookup uses explicit paths or `PATH`; relative `PATH` entries are
-  relative to the shell directory. Bare names use only `.EXE`/`.COM` entries of
-  `PATHEXT` (default `.COM;.EXE` if unset). The current directory is searched only
-  through an explicit path such as `.\tool.exe`, or an entry in `PATH`.
-- `.cmd` and `.bat` execution is rejected, including implicit `PATHEXT` lookup.
-  No general command parsing or execution is delegated to another shell.
-- Exit status: native child status; 1 for ordinary built-in/I/O errors; 2 for
-  syntax/usage errors; 126 for unsupported scripts or launch failures; 127 for a
-  command not found. `exit` without a number uses the previous status.
+## Configuration
 
-## Node.js, npm and npx
+### Choose a prompt
 
-Windows normally exposes npm through `npm.cmd`/`npm.ps1`, so a native-executable
-search alone cannot launch it. K Shell provides dedicated adapters for the bare
-commands `npm` and `npx`:
-
-```text
-node --version
-npm --version
-npx --version
-cd 'D:\My-Portfolio'
-npm run dev
-npm run build
-```
-
-If no native `npm.exe`/`npx.exe` resolves, K Shell searches PATH installation
-directories in order for `node_modules/npm/bin/npm-cli.js` or `npx-cli.js`, then
-the resolved Node directory, `%APPDATA%\npm` and standard Program Files Node.js
-locations. It uses adjacent `node.exe` when present, otherwise native Node from
-PATH. It launches Node with the CLI file and each argument separately, preserving
-the current project directory, inherited terminal streams and exit status. Node's
-directory is prepended to that child's PATH so package scripts can find it.
-Completion includes `npm`/`npx` when supported installations are found.
-
-The adapter never executes `npm.cmd`, `npm.ps1` or discovery helper scripts.
-Explicit wrappers such as `npm.cmd` stay unsupported. It uses the CLI files at
-the discovered installation; wrapper-specific prefix selection and unrelated
-version-manager shims are not interpreted. Missing/incomplete installations
-produce a diagnostic explaining how to install Node.js with npm or fix PATH.
-No new dependency or automatic package installation is introduced by K Shell.
-
-`npm run` package scripts keep npm's normal behavior, including its configured
-script shell (usually CMD on Windows), `node_modules/.bin`, lifecycle hooks and
-`--` argument forwarding. This is npm executing the requested package script;
-K Shell's own parser/executor remains native. Package installation, downloads,
-registry settings and npm errors are handled by npm itself.
-
-## Computer specifications and SSH
-
-Run `sysinfo` or its alias `specs` inside K Shell:
-
-```text
-sysinfo
-specs
-sysinfo --help
-```
-
-The summary starts with `OS` (Windows edition, release and build/revision when
-available) and `User` (the current Windows logon name), followed by the processor model, logical processors available to K Shell,
-all display-adapter names reported by Windows (deduplicated), usable physical
-RAM total/used/available, and total/available capacity for each local fixed drive
-letter. A `Total` row adds the listed drives' capacity and available space together.
-If any listed drive cannot be read, the combined total is marked unavailable.
-Sizes use binary units (GiB = 1,024³ bytes). This is a snapshot: run the
-command again to refresh. GPU memory, CPU/GPU utilization, physical disk models,
-network/removable drives and volumes without drive letters are not included.
-OS details come from the read-only Windows CurrentVersion registry values;
-client builds from 22000 correct a legacy `Windows 10` product label to Windows 11,
-preserving the edition and leaving Server product names unchanged. The
-[Windows release information](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information)
-documents the builds. The current user comes from native
-[`GetUserNameW`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getusernamew),
-not the mutable `USERNAME` environment variable. Optional release/revision values
-are omitted when unavailable. OS/user failures are reported individually.
-The command also reads the CPU registry entry and calls Windows display, memory and
-filesystem APIs directly; it never runs PowerShell, CMD or WMIC. The existing
-`windows-sys` dependency exposes those APIs through additional feature flags;
-no new crate is required. If a section/volume cannot be read, it displays an
-individual diagnostic while the remaining information stays visible. A partial
-snapshot returns status 0; invalid arguments return status 2. Interactive output
-uses the shared palette; `NO_COLOR`, redirected output and `-c` remain plain.
-
-Use the native Windows OpenSSH client to log in to your server. Replace the
-example username, address and key path with your own:
-
-```text
-ssh -V
-ssh username@192.168.1.100
-ssh -p 2222 username@192.168.1.100
-ssh -i 'C:\Users\YourName\.ssh\id_ed25519' username@192.168.1.100
-```
-
-The first command checks the installed client version without connecting.
-`ssh` inherits the terminal so password/key prompts and the remote shell work
-normally; type `exit` in the remote shell to return to K Shell. OpenSSH handles
-authentication, host-key verification and its usual configuration files. K Shell
-passes each argument separately, waits for the client and returns its exit status.
-Use full key paths: K Shell does not yet expand `~` or environment variables.
-Native `ssh.exe` on `PATH` takes precedence; if absent, K Shell checks the Windows
-system directory's `OpenSSH\ssh.exe`. Explicit paths bypass that fallback.
-If neither is installed, the error points to Windows Settings > Optional features
-> OpenSSH Client. Install the client, then restart K Shell for command suggestions.
-This feature does not install or enable an SSH server on your computer.
-
-## HTTP requests and downloads with curl
-
-K Shell runs native `curl.exe` directly, with its usual options and exit codes.
-Windows' system curl is used when `curl`/`curl.exe` is absent from PATH; a native
-PATH installation takes precedence. Explicit paths never fall back, and script
-wrappers stay rejected. Completion includes curl when available, using the
-existing startup/after-`cd` snapshot. No extra crate or download is required.
-TLS verification, proxies, redirects, authentication, curl configuration and
-supported protocols are handled by the selected curl installation.
-
-```text
-curl --version
-curl -I 'https://example.com'
-curl -L -o 'page.html' 'https://example.com'
-curl 'http://localhost:3000/api?first=1&second=2'
-curl -H 'Content-Type: application/json' --data-raw '{"message":"hello world"}' 'http://localhost:3000/api'
-```
-
-Quote URLs containing shell operators such as `&` and quote JSON with single
-quotes. Use curl's `-o`/`--output` option to save a response; shell `>` redirection
-and pipes remain unimplemented. See the [curl manual](https://curl.se/docs/manpage.html).
-Automated curl checks use `-q` to disable user configuration and contact only a
-test-owned loopback server, with private temporary output files; they never
-contact external services.
-
-## Finding commands with help
-
-`help` shows a compact overview grouped into navigation, reading/writing files,
-file actions, session commands, customization, computer information and external
-tools. Terminal headings and labels follow your palette; narrow windows use
-stacked rows and wrapped descriptions. Batch output stays plain.
-
-```text
-help
-help ls
-help files
-help copy
-help theme
-help shortcuts
-help all
-```
-
-Command help includes usage, supported options, short examples and related groups.
-Aliases such as `copy` and `cp` share the same page. Tab completes help topics.
-`help all` lists descriptions for every group; `help tools` describes external
-programs without launching or installing them.
-
-## Suggestions and keyboard shortcuts
-
-In an interactive terminal:
-
-- The **whole suggested suffix**, including flags/arguments, is colored using
-  the proposed complete command. Mint green means locally valid supported syntax
-  or a previously successful execution. Rose red means an unknown executable,
-  known invalid syntax/options or a previous failed execution. Unverified external
-  arguments remain slate grey. For example, typing `do` with history entries
-  `docker --sdf` and `docker --version` shows `cker --sdf` entirely red and
-  `cker --version` entirely green, respectively. Unknown typed command names,
-  such as `cls`, turn red even without a suggestion; their arguments retain the
-  normal foreground. Known names and editable prefixes stay neutral. `cl` still shows
-  a green `ear` suggestion for `clear`.
-  Built-ins, cached native commands and installed npm/npx/code/SSH adapters are
-  recognized. Explicit executable paths use native lookup, including quoted
-  paths with spaces; suggestions of unsupported executable scripts/missing
-  executable paths are red. Built-in argument checks reuse utility/tree option
-  parsers, and unsupported shell syntax is checked by the existing parser.
-  Docker's global option names, boolean values and required values are checked
-  before its subcommand; Docker plugin/subcommand arguments are unverified until
-  an execution result is available. Other external argument schemas are not
-  guessed. No suggested command or help/discovery subprocess is executed while
-  typing. Highlighting cannot predict future permissions, file contents or
-  server state; runtime validation still takes place on Enter.
-- Start typing `cle`: a green `ar` suggestion appears even on a fresh install.
-- Execute `echo hello`, then type `echo h`: history suggests the remaining text.
-- Press **Right arrow** at the end of the line to accept the suggestion; this
-  inserts text but does not execute it. Press **Enter** to run the command.
-- Press **Tab** to complete/cycle built-in commands, native commands from `PATH`,
-  or paths relative to the shell directory. `cd`/`mkdir`/`tree` completion shows directories
-  only. Filenames with spaces/quotes receive quoting that K Shell can parse.
-- The first **Tab** accepts the visible suggestion, including a history
-  path such as `D:\` after `cd D`; further Tabs can cycle matching alternatives.
-  Without a visible suggestion, Tab uses the normal completion candidates.
-  On Windows, `cd D:` + Tab inserts `D:\`. Absolute/UNC completion retains the
-  path prefix and the typed `\` or `/` directory-separator style.
-- Command completion uses the typed prefix and puts built-ins first: `cle` +
-  **Tab** inserts `clear `. Grey hints wait until you type an argument prefix;
-  completing a command does not immediately suggest an unrelated file. Commands
-  such as `clear`, `pwd`, and `exit` do not offer file arguments. `help` completes
-  static command/group topics instead of files.
-- Press **Up/Down** for command history, **Ctrl+R** to search history, **Ctrl+L**
-  to clear the screen, **Ctrl+C** to cancel the input line, and **Ctrl+D** on an
-  empty line to exit. During `npm run dev`, **Ctrl+C** stops the server normally
-  and returns to K Shell instead of exiting the shell.
-
-The tab title is set through the Windows console API. If Windows Terminal is
-configured to suppress application titles or the tab has a manual title override,
-that host setting takes precedence.
-
-History is limited to 1,000 entries. For compatibility, K Shell continues using
-`%APPDATA%\mysh\history.txt` (fallback: `~/.mysh/history.txt`) so existing command
-history remains available. A leading space skips a command's history entry.
-Use `history` to list that same saved/session history with entry numbers,
-oldest first, or `history 10` to show the most recent ten. `history --help`
-explains usage; `history 0` prints nothing. Numbers refer to the currently
-retained list (up to 1,000 entries); filtered results keep their original numbers.
-The current `history` invocation is included when the editor accepts it.
-Commands are displayed as entered, with terminal control characters escaped.
-The list reflects the editor's loaded history and current session, without
-re-reading the file or executing any entries. Leading-space commands stay
-excluded even when persistence is disabled. `-c` and batch sessions have no
-interactive history and `history` prints nothing there. Clearing/deleting or
-replaying entries is not implemented by this command.
-Set `KSHELL_HISTORY_FILE` before starting K Shell to use a different history file;
-an empty value disables persistence while keeping in-session navigation. If the
-history file cannot be read or written, editing continues with in-memory history.
-Startup settings use `KSHELL_THEME`, `KSHELL_ICONS`, `KSHELL_SUGGESTION_STYLE`
-and `KSHELL_HISTORY_FILE`. Their legacy `MYSH_*` names remain accepted when the
-corresponding `KSHELL_*` variable is absent. An explicitly empty new value takes
-precedence (including disabling history persistence).
-`NO_COLOR` disables suggestion coloring. Native command names are cached on
-startup and refreshed after `cd`; restart after installing a new executable.
-Suggestions and history are enabled only when both stdin and stdout are terminals.
-
-The most recent 200 command results are kept in memory for the current session,
-matched by directory and parsed arguments (so equivalent quoting/spacing matches).
-Later results replace earlier ones; status 130 interruptions do not add a failure.
-Results are not written to the history file and are forgotten on restart. A
-previous failure can remain red until a successful retry, even if external state
-has changed. Known invalid syntax always takes priority over remembered success.
-
-## Customize colors and icons
-
-For the coordinated **Midnight** look, build K Shell, then run this installer
-from PowerShell in the project directory:
-
-```powershell
-cargo build
-.\contrib\windows-terminal\Install-KShellProfile.ps1
-wt -p "K Shell"
-```
-
-It adds a dedicated Windows Terminal profile using **MesloLGM Nerd Font Mono,
-13 pt** when already installed (otherwise Consolas/Unicode), a deep ink-blue background, quiet cyan paths, one-cell Nerd Font icons,
-an opaque surface, bar cursor and comfortable padding. Use an installed font
-with that exact family name; the `-FontFace` parameter can select another Nerd
-Font Mono. The installer never installs fonts. It writes only its own
-`%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\K Shell\kshell.json`
-fragment and backs up an earlier copy before replacing it. Your main Terminal
-settings and default profile are not rewritten. Use `-Preview` to print the
-fragment or `-OutputPath` to generate it in another directory. Use `-Executable`
-when building outside `target/debug`. See Microsoft's
-[profile appearance settings](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/profile-appearance)
-and [fragment extensions](https://learn.microsoft.com/en-us/windows/terminal/json-fragment-extensions).
-
-The profile launches K Shell directly with:
-
-```text
-kshell --icons nerd --suggestions soft
-```
-
-Startup appearance flags override environment choices and must precede `-c`
-when used in command mode. Command-mode output remains plain. The existing
-`theme` commands can change appearance during the session.
-
-Prompt, suggestions, `ls`, `tree` and `sysinfo` share the selected foreground
-palette. The default Ocean palette uses blue folders, mint success/audio,
-lavender code/media, amber configuration/archives and a rose red error marker.
-Dusk switches to lavender folders and pink media with warmer gold details.
-Midnight uses regular-weight cyan paths, muted sage/rose suggestions, lavender
-code, and quieter slate metadata to match the installed Terminal profile.
-The terminal's existing font and background are preserved.
-
-Inside K Shell:
+Inside K Shell, run:
 
 ```text
 theme
-theme dusk
-theme midnight
-theme ocean
-theme icons unicode
-theme icons nerd
-theme icons off
-theme suggestions soft
-theme suggestions bold
-theme suggestions underline
-theme reset
 ```
 
-`theme` opens the interactive picker. `theme status` shows the current prompt,
-palette, icon mode and suggestion style; `theme list` lists available designs.
-Tab completes theme names, `theme install` names, icon modes and suggestion styles.
-Prompt installation receipts and the saved selection live in `%APPDATA%\kshell`
-(home fallback `.kshell`); `KSHELL_CONFIG_DIR` overrides that directory and an
-empty value disables persistence. Startup only reads this data in interactive
-sessions. `theme <design>` requires that design to be installed first.
+Use **Up/Down** to preview, **Enter** to install and save a design, or
+**Esc / Ctrl+C** to cancel. Designs are bundled and installed offline.
+The original `default` prompt is available without installing another design.
 
-Palette, icon and suggestion changes apply to the next prompt and subsequent
-listings for this session. `theme reset` restores the original prompt, Ocean,
-standard Unicode icons and soft suggestions for this session; `theme default`
-saves the original prompt across sessions. To choose startup palette defaults, set these environment values
-in PowerShell before launching K Shell (or in your PowerShell profile):
+| Command | Meaning |
+| --- | --- |
+| `theme` | Open the interactive prompt picker. |
+| `theme list` | List bundled optional prompt designs. |
+| `theme install <name>` | Install a bundled design without activating it. |
+| `theme <name>` | Activate an installed design and save it for future sessions. |
+| `theme default` | Restore and save the original prompt. |
+| `theme status` | Show the prompt, palette, icons, and suggestion style. |
+| `theme ocean` | Use the Ocean color palette for this session. |
+| `theme dusk` | Use the Dusk color palette for this session. |
+| `theme midnight` | Use the Midnight color palette for this session. |
+| `theme icons unicode\|nerd\|off` | Select standard icons, Nerd Font icons, or no icons. |
+| `theme suggestions soft\|bold\|underline` | Choose how suggestions are displayed. |
+| `theme reset` | Reset appearance for this session. |
+| `theme --help` | Show all appearance options. |
+
+Optional designs: `powerline`, `atomic`, `bubblesline`, `cert`, and `negligible`.
+For example:
+
+```text
+theme install atomic
+theme atomic
+theme dusk
+theme icons unicode
+theme suggestions soft
+```
+
+Prompt selection persists. Palette, icon, and suggestion commands apply to the
+current session. Nerd icons require an installed Nerd Font Mono; if icons appear
+as boxes, use `theme icons unicode` or `theme icons off`. K Shell does not install
+fonts or change the terminal host's font and background.
+
+### Set startup defaults
+
+Set environment variables in **PowerShell before launching K Shell**:
 
 ```powershell
 $env:KSHELL_THEME = 'dusk'
 $env:KSHELL_ICONS = 'unicode'
 $env:KSHELL_SUGGESTION_STYLE = 'soft'
-& 'D:\Projects\myshell\target\debug\kshell.exe'
+kshell
 ```
 
-Suggestions default to **soft**: regular-weight sage green for valid/previously
-successful proposals, dusty rose for known errors, and readable ash grey for
-unverified arguments. Known typed commands and arguments use the terminal's normal
-foreground; unknown command names and interactive command errors use the palette's
-red. Diagnostics sent to a file and normal batch output stay plain. **Bold** uses the stronger existing
-status colors; **underline** adds a single underline in the soft status colors.
-Trailing completion whitespace stays insertable without an extra underline.
-All three styles preserve the same command validation, source text, cursor and
-Tab/Right acceptance behavior. `NO_COLOR` disables color and underline together.
-The Ocean/Dusk/Midnight theme selects matching preview colors for every style.
+Add those assignments to your PowerShell profile to reuse them for shells
+launched from PowerShell, or set user environment variables in Windows Settings.
+Startup flags override appearance environment settings:
 
-The default `unicode` mode uses standard symbols such as `📁`, `📄`, `♪` and
-`‹›`; it needs no icon font. `nerd` provides distinct Rust, TypeScript, JavaScript,
-Python, Git and other file icons; choose an installed Nerd Font Mono in your
-terminal settings for these glyphs. If glyphs appear as boxes, use
-`theme icons unicode` or `theme icons off`. K Shell does not install/change fonts.
-Icons appear before names in terminal `ls` and `tree`, and before the prompt
-path. They are outside quoted filenames and included in column-width calculations.
-Redirected and `-c` output remains undecorated and ANSI-free, regardless of theme.
-`NO_COLOR` retains the layout without escape sequences; the prompt shows no numeric
-exit codes in either mode. Icons remain visible with `NO_COLOR`; disable them
-separately with `theme icons off` or `KSHELL_ICONS=off`. Invalid startup values fall
-back to the default independently; invalid `theme` arguments leave settings intact.
-The palette and design decisions are documented in [DESIGN.md](DESIGN.md).
-
-Command text must be valid Unicode. OS paths and executable lookup use native
-path types, but arbitrary non-Unicode filenames cannot yet be expressed in the
-command language. `pwd` uses display formatting for paths. Completion skips
-unrepresentable names rather than substituting a different filename.
-
-## Gaps and next milestones
-
-The initial inspection found only `AGENTS.md`: no Cargo manifest, source, README,
-or tests. This change establishes quoting and native execution before adding
-stream and language features.
-
-- Pipes, redirection, `&&`, `||`, separators, background execution, and embedded
-  newlines are recognized and rejected **before any command executes**. Thus
-  `echo hi|grep hi>out.txt` reports an unsupported operator rather than passing
-  syntax as arguments or partially executing the line.
-- `$NAME`, `${NAME}`, `$?`, `~`, assignments, and globbing have no expansion yet;
-  these characters remain literal. Shell-local variables, `export`, and `unset`
-  are not implemented.
-- `grep`, `find`, `which`, aliases, scripts, variable-name
-  completion, full argument/operator syntax highlighting and user-authored custom
-  prompt templates remain unimplemented. Bundled prompt selection is persistent.
-- When feeding commands through redirected stdin, the line reader can buffer
-  later input. Use `-c` when a native program needs to consume redirected stdin;
-  the command-input and child-input handoff in line mode is not implemented yet.
-- Forced cancellation of programs that ignore Ctrl+C, interruptible blocking
-  built-ins, close/logoff/shutdown cleanup, production Job Objects, batch
-  compatibility and packaging need separate Windows hardening work.
-
-Next correctness milestone: quote-aware expansion, followed by concurrent,
-stream-safe pipelines and ordered redirection with failure cleanup tests.
-
-## Verification
-
-Try the file commands in a new scratch folder (run each line separately):
-
-```text
-mkdir kshell-file-test
-cd kshell-file-test
-touch original.txt
-copy original.txt backup.txt
-mkdir archive
-move backup.txt archive
-rename archive/backup.txt renamed.txt
-update archive/renamed.txt final.txt
-tree
-delete archive/final.txt
-cp -r archive archive-copy
-rm -r archive-copy
+```powershell
+kshell --theme midnight --icons unicode --suggestions soft
 ```
 
-`copy`/`cp` and `move`/`mv` currently take one source and one destination.
-File-command tests use owned temporary fixtures for binary/Unicode paths,
-non-overwrite behavior, flags, recursive operations, guards, link handling,
-completion and side-effect-free suggestion validation. The Windows cross-drive
-test runs when temp and the repository are on different drives. Link tests use
-a native junction fixture if Windows denies the symlink privilege; additional
-`windows-sys` dev feature flags expose its APIs without adding a crate.
+| Setting | Meaning |
+| --- | --- |
+| `KSHELL_THEME` | Startup palette: `ocean`, `dusk`, or `midnight`. |
+| `KSHELL_ICONS` | Startup icons: `unicode`, `nerd`, or `off`. |
+| `KSHELL_SUGGESTION_STYLE` | Suggestions: `soft`, `bold`, or `underline`. |
+| `KSHELL_CONFIG_DIR` | Override the prompt configuration folder; empty disables prompt persistence. |
+| `KSHELL_HISTORY_FILE` | Override the history file; empty disables history persistence. |
+| `KSHELL_KPM_HOME` | Override KPM's absolute private storage root; empty disables KPM storage. |
+| `KSHELL_KPM_FPS` | KPM progress refresh rate, 5–60 FPS; defaults to 30. |
+| `NO_COLOR` | Disable shell color and underline styling; icons are configured separately. |
+
+Legacy `MYSH_THEME`, `MYSH_ICONS`, `MYSH_SUGGESTION_STYLE`, `MYSH_HISTORY_FILE`,
+and `MYSH_KPM_HOME` are accepted when their corresponding `KSHELL_*` setting is
+absent. An explicitly empty `KSHELL_*` value takes precedence.
+
+| Stored data | Default location |
+| --- | --- |
+| Prompt designs and selection | `%APPDATA%\kshell` (home fallback: `.kshell`). |
+| Command history | `%APPDATA%\mysh\history.txt` (home fallback: `.mysh/history.txt`). |
+| KPM installations and records | `%LOCALAPPDATA%\KShell\kpm`. |
+
+History retains up to 1,000 entries. Start a command with a space to keep it out
+of history. History is saved for interactive sessions; `-c` and batch sessions
+have no interactive history.
+
+### Windows Terminal profile
+
+After a source build, register the bundled profile from the repository root:
+
+```powershell
+.\contrib\windows-terminal\Install-KShellProfile.ps1
+wt -p 'K Shell'
+```
+
+The script uses an installed Meslo Nerd Font Mono when available, otherwise
+Consolas with Unicode icons. It changes only its own profile fragment and backs
+up an earlier copy. Use `-FontFace <name>` to select an installed font,
+`-Preview` to inspect the fragment, or `-Executable <path>` for a custom build.
+
+## Command reference
+
+These are **all built-in command names and aliases in this source tree**.
+`[value]` means optional; `...` means multiple values. Only documented flags
+are supported. Use `--` before a filename beginning with `-` where the usage
+shows `[--]`.
+
+### Navigation and files
+
+| Command | Meaning |
+| --- | --- |
+| `pwd` | Print the current folder. |
+| `cd [folder]` | Change folder; no argument returns to your home folder. |
+| `ls [-al] [path ...]` | List files. `-a` includes hidden entries; `-l` shows file kind and byte size. |
+| `tree [-ad] [-L depth] [--] [folder]` | Show a folder tree. `-a` includes hidden entries, `-d` shows folders only, and `-L` limits depth. |
+| `mkdir [-p] folder ...` | Create folders; `-p` also creates missing parents. |
+| `create [--] file ...` | Create new empty files; reject existing entries without modifying them. |
+| `touch file ...` | Create missing files or update existing file timestamps. |
+| `cat [file ...]` | Print file bytes; no filename, or `-`, reads standard input. |
+| `write [--] file text ...` | Create or replace a file with UTF-8 text and a final newline. |
+| `append [--] file text ...` | Append UTF-8 text and a final newline; create the file if missing. |
+| `cp [-r] source destination` / `copy` | Copy one file or folder; `-r` is required for folders. |
+| `mv source destination` / `move` | Move one file or folder. |
+| `rename source new-name` / `update` | Rename an item within its current folder; the new name must be a leaf filename. |
+| `rm [-rf] path ...` / `delete` | Permanently delete entries; `-r` removes folders recursively and `-f` ignores missing paths. |
+| `open [--] file` | Open a document or media file with its Windows default app; executable and batch files are rejected. |
+
+`cp`/`copy`, `mv`/`move`, and `rename`/`update` reject overwriting existing
+entries. Parent folders must already exist for file creation and text writes.
+`write` replaces existing content; `rm`/`delete` bypass the Recycle Bin.
+Recursive operations guard links/reparse points and protected source locations;
+file operations are not transactional.
+
+### Session, appearance, and system
+
+| Command | Meaning |
+| --- | --- |
+| `echo [text ...]` | Print arguments separated by spaces, followed by a newline; flags such as `-n` are literal text. |
+| `clear` | Clear the visible terminal and scrollback. |
+| `history [count]` | List retained commands, or only the most recent `count` entries. |
+| `help [topic]` | Browse command usage and examples. Topics include command names, `all`, `shortcuts`, `navigate`, `files`, `manage`, `session`, `customize`, `system`, and `tools`. |
+| `kshell [--welcome]` | Show the welcome banner inside the current session. |
+| `theme [option]` | Configure prompt design, palette, icons, and suggestions; see [configuration](#configuration). |
+| `sysinfo` / `specs` | Show native Windows OS, user, CPU, GPU, usable RAM, and local drive information. |
+| `exit [0-255]` | Exit with the supplied status, or the previous command's status. |
+| `kpm <command>` | Install and manage developer tools; updated source build only. |
+| `kreq <METHOD> <URL> [options] [content\|headers]` | Make HTTP requests; updated source build only. |
+
+### External programs
+
+K Shell also launches native Windows programs found on PATH. These commands
+belong to their respective applications, with their own options and help:
+
+| Command | Meaning / requirement |
+| --- | --- |
+| `git [arguments]` | Git version control; requires Git for Windows. |
+| `ssh [options] user@host` | Connect through native OpenSSH; requires an available SSH client. |
+| `curl [options] URL` | HTTP requests and downloads; uses native curl when available. |
+| `nano [file]` | Edit text with GNU nano; K Shell can discover Git for Windows' bundled Nano. |
+| `code [path]` | Open VS Code; requires VS Code. Its native CLI adapter avoids executing `code.cmd`. |
+| `node [arguments]` | Run JavaScript with Node.js. |
+| `npm [arguments]` | Manage Node.js packages and scripts through the selected Node/npm installation. |
+| `npx [arguments]` | Run an npm-provided tool through the selected Node/npm installation. |
+| `python [arguments]` | Run Python. |
+| `go [arguments]` | Use the Go toolchain. |
+| `rustc [arguments]` | Compile Rust source. |
+| `cargo [arguments]` | Build and manage Rust projects. |
+| `php [arguments]` | Run PHP. |
+| `java [arguments]` | Run Java programs. |
+| `javac [arguments]` | Compile Java source; requires a full JDK. |
+
+Install these programs separately or through a supported KPM provider. Git's
+bundled Nano is a discovery fallback, not part of K Shell. SSH leaves host keys,
+authentication, and SSH configuration to OpenSSH. `curl` keeps its own HTTP/TLS
+behavior; `kreq` is an independent native client.
+
+### Launch options
+
+Run these from **PowerShell or Command Prompt**:
+
+| Invocation | Meaning |
+| --- | --- |
+| `kshell` | Start an interactive session when stdin and stdout are terminals. |
+| `kshell -c "<command>"` | Execute one command and return its status. |
+| `kshell --theme ocean\|dusk\|midnight` | Set the startup palette. |
+| `kshell --icons unicode\|nerd\|off` | Set startup icons. |
+| `kshell --suggestions soft\|bold\|underline` | Set startup suggestion styling. |
+| `kshell --welcome` | Display the welcome banner and exit. |
+| `kshell --help` | Show executable usage. |
+
+Put appearance options before `-c`. Command-mode and redirected utility output
+remain plain and omit interactive prompts and decoration.
+
+## Package manager: KPM
+
+**Updated source build only.** Run `kpm install` to select one tool, or
+`kpm install node` to select a version. The menu shows a Latest Stable shortcut,
+the five newest distinct stable releases, and Other version for manual entry.
+Use Up/Down, Enter, and Esc/Ctrl+C. Only one tool is accepted per installation.
+
+| Command | Meaning |
+| --- | --- |
+| `kpm list` | List the seven supported tools and provider capabilities. |
+| `kpm search <query>` | Search the supported tool catalog. |
+| `kpm versions <tool>` | Discover available stable releases. |
+| `kpm install` | Choose one tool and then a version interactively. |
+| `kpm install <tool>` | Open that tool's version menu. |
+| `kpm install <tool>@<version>` | Validate and install a specific available version after confirmation. |
+| `kpm install <tool>@latest --yes` | Install the latest stable release without confirmation. |
+| `kpm installed [tool]` | List recorded managed installations. |
+| `kpm current <tool>` | Verify and show the active managed version. |
+| `kpm use <tool>[@version]` | Select an installed managed version, without downloading anything. |
+| `kpm upgrade <tool>[@version]` | Select and install a newer supported isolated version, retaining older ones. |
+| `kpm uninstall <tool>@<version>` | Remove a recorded managed installation, confirming deactivation if active. |
+| `kpm recover` | Inspect interrupted installation work, recording verified completion or cleaning safe marked staging. |
+| `kpm --help` | Show syntax, provider limits, storage, and progress settings. |
+
+| Tool | Provider and version support |
+| --- | --- |
+| `node` | Official ZIP + SHA-256; isolated versions, switching, and matching npm/npx. |
+| `python` | WinGet, user scope; one managed version. Switching and in-place upgrades are unsupported. |
+| `go` | Official SDK ZIP + SHA-256; isolated versions and switching. |
+| `rust` | Existing rustup client; private Rust/Cargo homes, pinned MSVC toolchains, and switching. |
+| `php` | Official NTS x64 ZIP + SHA-256; isolated versions and switching. Requires a matching Visual C++ runtime. |
+| `git` | WinGet, user scope; one managed version. Switching and in-place upgrades are unsupported. |
+| `java` | Full Eclipse Temurin JDK 17+, including `javac`; isolated JDKs, switching, and child `JAVA_HOME`. |
+
+For example, `kpm install java@21` resolves the newest available Temurin JDK 21
+patch/build, then confirms installation. `kpm use java@21` selects an installed
+managed JDK 21; `java -version` and `javac -version` verify its runtime/compiler.
+
+Noninteractive install/upgrade requires an explicit `@version` or `@latest`
+**and** `--yes`. The flag skips confirmation, never validation. Noninteractive
+uninstall/recover also requires `--yes`. In a terminal, `--yes` alone does not
+skip an unspecified version's menu.
+
+Selections take effect immediately and persist across shell restarts. Managed
+PATH, `JAVA_HOME`, `GOROOT`, and Rust variables apply to K Shell's child processes.
+KPM never changes system PATH or requests administrator elevation. Python/Git
+installers must support a verifiable user installation at the private destination;
+existing unmanaged packages are not adopted. PHP discovery is limited to its
+provider's currently published releases JSON. Rust requires an existing rustup
+client; KPM does not bootstrap it.
+
+The first switchable installation activates after verification. With another
+version active, interactive installation offers activation; `--yes` preserves
+that existing selection. Downloads and managed records are verified before
+success is reported. Automated tests use mock providers and local fixtures;
+live installation across all seven upstreams still needs separate verification.
+
+Read the [full KPM guide](docs/kpm.md) for installation trust, cancellation,
+recovery, active-version removal, and provider details.
+
+## HTTP client: kreq
+
+**Updated source build only.** Send HTTP requests without a separate curl
+installation. Supported methods are `get`, `post`, `put`, `patch`, `delete`,
+`head`, and `options`, case-insensitively.
 
 ```text
+kreq get 'https://api.example.com/users/1'
+kreq get 'https://api.example.com/users/1' --json
+kreq get 'https://api.example.com/users/1' --json content
+kreq get 'https://api.example.com/users/1' headers
+kreq post 'https://api.example.com/users' -H 'Content-Type: application/json' -d '{"name":"John"}'
+kreq get 'https://example.com/download.zip' -L -o download.zip
+kreq --help
+```
+
+The API URLs above are placeholders; replace them with your service.
+Interactive output shows `StatusCode` (such as `200 OK`), `Content`,
+`RawContent`, and `Headers`. A final `content` or `headers` selector keeps
+StatusCode and only that field; `header` aliases `headers`. `--json` formats
+JSON inside Content. Headers view skips downloading/parsing the body.
+
+| Option | Meaning |
+| --- | --- |
+| `-j`, `--json` | Parse and pretty-print JSON; invalid JSON returns an error. |
+| `--raw` | Show only the body, without the terminal summary. |
+| `-H`, `--header <header>` | Add a request header; repeat as needed. |
+| `-d`, `--data <text>` | Send the exact supplied request body. |
+| `-o`, `--output <file>` | Save original response bytes, overwriting a regular file; parents must exist. |
+| `-i`, `--include` | Include response headers on stdout in raw/batch/file modes. |
+| `-v`, `--verbose` | Show request/response details on stderr with credential-header redaction. |
+| `-L`, `--location` | Follow up to ten redirects. |
+| `-X`, `--request <method>` | Override or supply the request method. |
+| `--timeout <seconds>` | Set total request timeout; default 30, maximum 86400. |
+| `--fail` | Return status 22 for HTTP 4xx/5xx while retaining response output. |
+| `-h`, `--help` | Show the complete HTTP-client usage. |
+
+`--json` changes response formatting; set a request's Content-Type explicitly.
+Raw/batch output preserves body bytes without an added newline; file output
+keeps original bytes even with `--json`. Headers view writes a status/header
+block instead. Ctrl+C cancels interactive requests. Shell `>` and pipes are not
+implemented; use `-o` for files inside K Shell.
+
+Read the [full kreq guide](docs/kreq.md) for response examples, security,
+redirect rules, error statuses, and binary output behavior.
+
+## Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| **Tab** | Accept a visible suggestion, or complete a command/path; press again to cycle matches. |
+| **Right arrow** | Accept the suggested suffix at the end of the input line. |
+| **Up / Down** | Browse command history. |
+| **Ctrl+R** | Search history. |
+| **Ctrl+L** | Clear the screen and scrollback while keeping current input. |
+| **Ctrl+C** | Cancel input or interrupt a foreground program. |
+| **Ctrl+D** | Exit when the input line is empty. |
+| **Enter** | Execute the current command. |
+
+Suggestions use local syntax checks and remembered command results; they do not
+run commands while you type. External arguments may remain unverified.
+
+## Build from source
+
+Install stable Rust and the Windows MSVC build tools. From the Rust repository
+root containing `Cargo.toml`, run in **PowerShell**:
+
+```powershell
+cargo build --locked
+.\target\debug\kshell.exe
+```
+
+For one command:
+
+```powershell
+.\target\debug\kshell.exe -c "echo 'Hello from K Shell'"
+```
+
+If an existing debug executable is running, close it before rebuilding, or
+choose a separate build directory:
+
+```powershell
+cargo build --locked --target-dir target\local
+.\target\local\debug\kshell.exe
+```
+
+For a distributable Windows x64 ZIP, first cache the locked dependency graph:
+
+```powershell
+cargo fetch --locked
+.\scripts\Build-Release.ps1
+```
+
+Find the ZIP and checksum in `target/packages`. The package includes the native
+executable, installer, Terminal-profile helper, quick-start guide, and license
+notices. Recipients do not need Rust. Use a fresh `-OutputDirectory` when
+building another package; existing ZIPs are not overwritten.
+
+## Current limitations
+
+- Pipes, redirection, `&&`, `||`, command separators, and background execution are not implemented. Unsupported operators are rejected before execution.
+- Variables, `$NAME`, `${NAME}`, `$?`, `~`, assignments, and globbing are not expanded; they remain literal. `export`, `unset`, aliases, and full scripting are unavailable.
+- `grep`, `find`, and `which` are not built-ins yet; the command table above reflects implemented commands.
+- Direct `.cmd`/`.bat` execution is rejected. The npm/npx and VS Code adapters invoke native executables with known packaged CLI scripts; they do not add general batch compatibility.
+- K Shell runs Windows applications; Linux ELF binaries require a compatible environment.
+- User-authored prompt templates and full Bash/Zsh compatibility are not implemented.
+- Redirected line-mode input may buffer later commands; use `-c` when a child program needs redirected stdin.
+- General foreground programs control their own Ctrl+C behavior. Forced cleanup of programs that ignore it remains limited; KPM separately owns its installer process jobs.
+
+## Contributing
+
+Work from the Rust repository root and read [AGENTS.md](AGENTS.md) for architecture
+and contribution guidelines. Validate code changes with:
+
+```powershell
 cargo fmt --check
-cargo test
-cargo clippy --all-targets -- -D warnings
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
 ```
 
-Tests cover empty/adjacent quotes, literal Windows and Unicode paths, source
-spans, unsupported operators, persistent shell state, diagnostics/status codes,
-line mode, explicit batch rejection, native executable paths and arguments with
-spaces, Windows `PATH`/`PATHEXT` lookup, filesystem commands and flags, binary-safe
-`cat`, command/history hints, quoted path completion, persistent history, and
-Windows display-path formatting, terminal column widths/colors, Unicode alignment,
-plain redirected listings, and clear-screen actions. Filesystem tests use fresh temporary
-directories and delete only those directories.
+Tests use temporary files and local fixtures. KPM tests do not install real
+software or contact public providers. See [DESIGN.md](DESIGN.md) for appearance
+decisions. To publish a release, update the Cargo version and push a matching
+`vMAJOR.MINOR.PATCH` tag; the release workflow packages and checks the Windows
+build before publishing assets.
 
-File-opening tests validate command dispatch, errors, media paths after `cd`,
-Unicode/space handling, lossless Windows path conversion, and file completion.
-Automated tests do not launch desktop apps. To verify a configured media player
-manually, run `open 'D:\path\to\song.mp3'` and `open 'D:\path\to\movie.mp4'` with
-real files on your machine. Playback and codec support belong to that player.
+## License
 
-VS Code tests use fake installations and a native Rust CLI stand-in, without
-opening a desktop editor. They check legacy/versioned layouts, search order,
-argument/environment handling, current directory, and rejection of direct batch
-execution. Manual verification: `code --version`, then `cd 'your project'` and
-`code .` with an installed VS Code.
-
-System tests verify hardware snapshots on Windows, both command names, argument
-validation/completion, unavailable sections, byte units, provided-stream errors
-and color handling. SSH tests check native fallback discovery and, when Windows
-OpenSSH is installed, `ssh -V`, offline `ssh -G -F none` argument handling and
-error-status propagation with an empty child `PATH`. They never connect to a
-server, read SSH configuration or launch desktop apps. An authenticated remote
-session requires a real server and is a separate manual check.
-
-Appearance tests cover both palettes and all icon modes, per-session settings,
-startup defaults, argument validation/completion, Unicode cell-width alignment,
-quoted names, plain output and identical visible prompt text with/without color.
-
-Suggestion-highlighting tests check color transitions, quoted/Unicode command
-suffixes, native/adapted command recognition, paths after `cd`, deleted files,
-unsupported scripts, whole-suggestion argument status, Docker global flags,
-recorded failures/successes, directory/argument scoping, stale-context clearing
-and disabled colors. Typed text remains unchanged; highlighting never runs a program.
-
-Node/npm tests cover installation priority, separate npm/Node layouts, incomplete
-installations, native-executable precedence, explicit-wrapper rejection and
-argument/PATH handling. When npm is installed, an offline temporary fixture
-package checks `npm run`, Unicode/space arguments, project directory and nonzero
-script status, plus installed CLI versions. Tests use private empty npm config
-files and a temporary cache; they do not install packages or access the network.
-Manual project check: `npm run dev -- --help` reaches the installed development
-tool without starting a server; `npm run dev` starts the actual development server.
-
-Interrupt tests validate event filtering and native exit-status conversion.
-The Windows integration check launches an interactive K Shell in a new hidden
-console, runs an offline fixture npm package through a Windows batch wrapper
-and nested Node processes, and sends a real console Ctrl+C broadcast there.
-It verifies the server's listener closes, a subsequent shell command succeeds,
-`clear` removes prior console output, Ctrl+L clears while preserving an editable
-command, and explicit `exit 0` exits the shell. The helper enables the actual
-editor with `TERM=xterm-256color` and tests clearing with `NO_COLOR=1`.
-It also verifies the `K Shell` console title, legacy startup-setting fallback,
-new-setting precedence and disabled history without changing the legacy file.
-When Git's Nano is installed, the same contained console also opens Nano with
-user configuration disabled, types into a new temporary file, saves with Ctrl+O
-and Enter, exits with Ctrl+X and verifies K Shell can execute another command.
-Separate Nano tests cover native PATH precedence, quoted arguments, cwd/status
-propagation, explicit-path/script rejection, completion and installed `--version`.
-The ignored helper test is invoked by
-this check; it must not be run in a user's console. A private test-only Job
-Object cleans up all probe processes on failure/timeout. The existing
-`windows-sys` crate gains dev feature flags for these native test APIs; no new
-crate or general shell delegation is added. Interactive input uses rustyline's
-existing Ctrl+C handling; long-running built-ins are a separate milestone.
-
-Manual check in the updated interactive executable:
-
-```text
-cd D:\My-Portfolio
-npm run dev
-```
-
-After the server reports ready, press Ctrl+C once. The folder prompt should
-return; run `pwd` to verify the shell is still open, then `exit` when finished.
+K Shell is open source under the [MIT License](LICENSE).
