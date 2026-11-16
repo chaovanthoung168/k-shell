@@ -86,6 +86,19 @@ Close and reopen your terminal, then run:
 kshell
 ```
 
+To launch immediately in the terminal you used for setup:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\KShell\kshell.exe"
+```
+
+The one-line installer runs in a child PowerShell process, so it cannot update
+the parent terminal's existing PATH. Close **all** terminal windows and reopen
+the terminal app before using the short `kshell` command, or use the full path
+above. Setup also prints the exact launch command for custom install locations.
+Download/setup uses one pixel-style progress line moving left to right, followed
+by the welcome banner once. `-NoAnimation` and redirected output use plain stages.
+
 In Windows Terminal, you can also select **K Shell** from the profile dropdown.
 No administrator access, Rust installation, WSL, or special font is required.
 
@@ -115,6 +128,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -InstallDirect
 | `-NoTerminalProfile` | Skip Windows Terminal profile registration. |
 | `-FontFace <name>` | Use a font already installed on your machine. |
 | `-NoAnimation` | Use plain installation progress. |
+| `-Launch` | Open the installed K Shell immediately after setup, using its full path. |
 | `-Archive <ZIP>` | Install from a local archive and its adjacent `.sha256` file. |
 | `-ChecksumFile <path>` | Specify the local archive's checksum file explicitly. |
 

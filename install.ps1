@@ -14,24 +14,84 @@ param(
     [ValidateSet('User', 'Process', 'None')]
     [string]$PathScope = 'User',
     [switch]$NoTerminalProfile,
-    [switch]$NoAnimation
+    [switch]$NoAnimation,
+    [switch]$Launch
 )
 
 $ErrorActionPreference = 'Stop'
-function Show-KShellProgress([int]$Percent, [string]$Stage) {
-    # The bar grows from RIGHT to LEFT. Only advance after a real setup stage.
-    $animate = -not $NoAnimation -and $Host.Name -eq 'ConsoleHost' -and -not [Console]::IsOutputRedirected
-    $start = 0
-    if ($null -ne $script:kShellProgress) { $start = $script:kShellProgress }
-    $script:kShellProgress = $Percent
-    if (-not $animate) { Write-Host "[$Percent%] $Stage"; return }
-    for ($frame = $start; $frame -le $Percent; $frame++) {
-        $filled = [int][Math]::Floor(24 * $frame / 100)
-        $bar = ('-' * (24 - $filled)) + ('#' * $filled)
-        Write-Host -NoNewline ("`r  K Shell [{0}] {1,3}%  {2}    " -f $bar, $frame, $Stage)
-        Start-Sleep -Milliseconds 8
+if (-not ('KShellSetupDisplay' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+public sealed class KShellSetupDisplay : IDisposable {
+    private readonly object gate = new object();
+    private readonly Thread worker;
+    private readonly bool color;
+    private bool previousCursor, ownsCursor, finished;
+    private volatile bool running = true;
+    private string stage = "Preparing setup";
+    private int tick, lastLength;
+    public KShellSetupDisplay(bool useColor) {
+        color = useColor;
+        try { previousCursor = Console.CursorVisible; Console.CursorVisible = false; ownsCursor = true; } catch { }
+        worker = new Thread(Animate); worker.IsBackground = true; worker.Start();
     }
-    Write-Host ''
+    public static string Frame(int frame, int width, string message, bool complete) {
+        int size = Math.Max(1, Math.Min(24, width / 3));
+        char[] pixels = new string('\u2591', size).ToCharArray();
+        int head = Math.Max(0, frame) % size;
+        for (int i = 0; i < size; i++) {
+            if (complete || i == head) pixels[i] = '\u2588';
+            else if (i == head - 1) pixels[i] = '\u2593';
+            else if (i == head - 2) pixels[i] = '\u2592';
+        }
+        string line = "  K Shell [" + new string(pixels) + "] " + message;
+        int limit = Math.Max(0, width - 1);
+        return line.Length > limit ? line.Substring(0, limit) : line;
+    }
+    public void Update(string message) { lock (gate) { stage = message; } }
+    private void Animate() {
+        while (running) {
+            try { lock (gate) { Draw(false); } } catch { running = false; }
+            Thread.Sleep(33);
+        }
+    }
+    private void Draw(bool complete) {
+        int width = 80;
+        try { width = Math.Max(1, Console.WindowWidth); } catch { }
+        string line = Frame(tick++, width, stage, complete);
+        ConsoleColor previous = Console.ForegroundColor;
+        try {
+            if (color) Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Error.Write("\r" + line.PadRight(Math.Min(Math.Max(lastLength, line.Length), Math.Max(0, width - 1))));
+            Console.Error.Flush(); lastLength = line.Length;
+        } finally { if (color) Console.ForegroundColor = previous; }
+    }
+    public void Complete() { Finish(true); }
+    public void Dispose() { Finish(false); }
+    private void Finish(bool success) {
+        if (finished) return;
+        finished = true; running = false; worker.Join();
+        try {
+            lock (gate) { stage = success ? "Installation complete" : "Setup stopped"; Draw(success); Console.Error.WriteLine(); }
+        } finally { if (ownsCursor) { try { Console.CursorVisible = previousCursor; } catch { } } }
+    }
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, UIntPtr parameter,
+        string area, uint flags, uint timeout, out UIntPtr result);
+    public static void NotifyEnvironmentChanged() {
+        UIntPtr result;
+        SendMessageTimeout(new IntPtr(0xffff), 0x001a, UIntPtr.Zero, "Environment", 2, 1000, out result);
+    }
+}
+'@
+}
+$setupDisplay = $null
+function Show-KShellProgress([int]$Percent, [string]$Stage) {
+    # One indeterminate pixel moves left to right; percentages are not transfer data.
+    if ($null -ne $setupDisplay) { $setupDisplay.Update($Stage) }
+    else { Write-Host "K Shell: $Stage" }
 }
 if ([Environment]::OSVersion.Platform -ne 'Win32NT' -or -not [Environment]::Is64BitOperatingSystem) {
     throw 'K Shell requires 64-bit Windows 10 or 11.'
@@ -40,7 +100,12 @@ $repository = 'chaovanthoung168/k-shell'
 $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('kshell-download-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($temporaryRoot) | Out-Null
 $previousTls = [Net.ServicePointManager]::SecurityProtocol
+$previousProgressPreference = $ProgressPreference
 try {
+    $ProgressPreference = 'SilentlyContinue'
+    if (-not $NoAnimation -and $Host.Name -eq 'ConsoleHost' -and -not [Console]::IsOutputRedirected -and -not [Console]::IsErrorRedirected) {
+        $setupDisplay = [KShellSetupDisplay]::new(-not (Test-Path Env:NO_COLOR))
+    }
     Show-KShellProgress 5 'Preparing setup'
     [Net.ServicePointManager]::SecurityProtocol = $previousTls -bor [Net.SecurityProtocolType]::Tls12
     # Invoke-Expression does not resolve this script's default parameter set.
@@ -49,7 +114,7 @@ try {
         $endpoint = 'latest'
         if ($Version -ne 'latest') { $endpoint = 'tags/v' + $Version.TrimStart('v') }
         $headers = @{ 'User-Agent' = 'KShell-Installer'; 'Accept' = 'application/vnd.github+json' }
-        Write-Host 'Looking up the K Shell Windows release...'
+        Show-KShellProgress 5 'Finding the latest release'
         try {
             $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases/$endpoint" -Headers $headers -TimeoutSec 60
         } catch {
@@ -65,6 +130,7 @@ try {
             $expectedUrl = "https://github.com/$repository/releases/download/v$releaseVersion/$name"
             if ($asset.Count -ne 1 -or $asset[0].browser_download_url -cne $expectedUrl) { throw "Release is missing the expected asset: $name" }
             $destination = Join-Path $temporaryRoot $name
+            Show-KShellProgress 20 ("Downloading " + $name)
             Invoke-WebRequest -Uri $expectedUrl -Headers $headers -UseBasicParsing -OutFile $destination -TimeoutSec 180 | Out-Null
         }
         $Archive = Join-Path $temporaryRoot $archiveName
@@ -82,7 +148,6 @@ try {
     if ($checksum -notmatch '^([a-fA-F0-9]{64})\s+\*?([^\r\n]+)$' -or $Matches[2] -cne $archiveName) { throw 'Invalid checksum file or archive filename mismatch.' }
     $expectedHash = $Matches[1]
     if ((Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash -ine $expectedHash) { throw 'ZIP checksum verification failed. Nothing has been installed.' }
-    Write-Host "Verified K Shell $releaseVersion. Installing..."
     Show-KShellProgress 60 'Verified download checksum'
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -113,18 +178,39 @@ try {
     if ($manifest.version -cne $releaseVersion) { throw 'Package version does not match the release.' }
     $arguments = @{ FontFace = $FontFace; PathScope = $PathScope; NoTerminalProfile = $NoTerminalProfile }
     # Older public packages do not have the display switch yet.
-    if ((Get-Command (Join-Path $package 'Install.ps1')).Parameters.ContainsKey('NoAnimation')) { $arguments.NoAnimation = $NoAnimation }
+    if ((Get-Command (Join-Path $package 'Install.ps1')).Parameters.ContainsKey('NoAnimation')) { $arguments.NoAnimation = $true }
     if ($InstallDirectory) { $arguments.InstallDirectory = $InstallDirectory }
     if ($TerminalProfilePath) { $arguments.TerminalProfilePath = $TerminalProfilePath }
-    & (Join-Path $package 'Install.ps1') @arguments
-    Show-KShellProgress 100 'Installation complete'
-    if ($PathScope -eq 'User') { Write-Host 'K Shell is ready. Restart your terminal app, then run kshell.' }
-    elseif ($PathScope -eq 'Process') { Write-Host 'K Shell is ready. Run kshell in this PowerShell process.' }
-    else { Write-Host 'K Shell is ready. Launch kshell.exe from your installation folder.' }
+    Show-KShellProgress 80 'Installing K Shell'
+    # Legacy packages also write their own progress and banner. Keep one owner of
+    # terminal output, while retaining every installer stream for error reporting.
+    $setupLog = Join-Path $temporaryRoot 'package-setup.log'
+    try { & (Join-Path $package 'Install.ps1') @arguments *> $setupLog }
+    catch {
+        if ($null -ne $setupDisplay) { $setupDisplay.Dispose(); $setupDisplay = $null }
+        if (Test-Path -LiteralPath $setupLog) { Get-Content -LiteralPath $setupLog -Tail 12 | Write-Host }
+        throw
+    }
+    $installedFolder = $InstallDirectory
+    if (-not $installedFolder) { $installedFolder = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\KShell' }
+    $installedExecutable = Join-Path ([IO.Path]::GetFullPath($installedFolder)) 'kshell.exe'
+    if ($PathScope -eq 'User') { [KShellSetupDisplay]::NotifyEnvironmentChanged() }
+    if ($null -ne $setupDisplay) { $setupDisplay.Complete() }
+    else { Show-KShellProgress 100 'Installation complete' }
+    & $installedExecutable --welcome
+    if ($LASTEXITCODE -ne 0) { throw 'K Shell was installed, but the welcome check failed.' }
+    $launchCommand = "& '" + $installedExecutable.Replace("'", "''") + "'"
+    Write-Host 'Start K Shell now (works in your current terminal):'
+    Write-Host "  $launchCommand"
+    if ($PathScope -eq 'User') { Write-Host 'For the short kshell command, close ALL terminal windows and reopen the terminal app. A child installer cannot update its parent PowerShell PATH.' }
+    elseif ($PathScope -eq 'Process') { Write-Host 'kshell is also available in this installer PowerShell process.' }
 } finally {
+    if ($null -ne $setupDisplay) { $setupDisplay.Dispose() }
+    $ProgressPreference = $previousProgressPreference
     [Net.ServicePointManager]::SecurityProtocol = $previousTls
     $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     $cleanup = [IO.Path]::GetFullPath($temporaryRoot)
     if (-not $cleanup.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($cleanup) -notmatch '^kshell-download-[0-9a-f]{32}$') { throw 'Refusing unsafe download cleanup.' }
     Remove-Item -LiteralPath $cleanup -Recurse -Force
 }
+if ($Launch) { & $installedExecutable }

@@ -10,20 +10,26 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:kShellPackageProgress = 0
+$script:kShellPackageProgressActive = $false
 function Show-KShellProgress([int]$Percent, [string]$Stage) {
     $animate = -not $NoAnimation -and $Host.Name -eq 'ConsoleHost' -and -not [Console]::IsOutputRedirected
-    $start = 0
-    if ($null -ne $script:kShellPackageProgress) { $start = $script:kShellPackageProgress }
-    $script:kShellPackageProgress = $Percent
-    if (-not $animate) { Write-Host "[$Percent%] $Stage"; return }
-    for ($frame = $start; $frame -le $Percent; $frame++) {
-        $filled = [int][Math]::Floor(24 * $frame / 100)
-        $bar = ('-' * (24 - $filled)) + ('#' * $filled)
-        Write-Host -NoNewline ("`r  K Shell [{0}] {1,3}%  {2}    " -f $bar, $frame, $Stage)
-        Start-Sleep -Milliseconds 8
+    if (-not $animate) { Write-Host "K Shell: $Stage"; return }
+    $width = [Math]::Max(1, [Console]::WindowWidth - 1)
+    $size = [Math]::Max(1, [Math]::Min(24, [int]($width / 3)))
+    $script:kShellPackageProgressActive = $true
+    for ($frame = $script:kShellPackageProgress; $frame -le $Percent; $frame++) {
+        $filled = [int][Math]::Floor($size * $frame / 100)
+        $bar = ([string][char]0x2588 * $filled) + ([string][char]0x2591 * ($size - $filled))
+        $line = "  K Shell [$bar] $Stage"
+        if ($line.Length -gt $width) { $line = $line.Substring(0, $width) }
+        Write-Host -NoNewline ("`r" + $line.PadRight($width))
+        Start-Sleep -Milliseconds 33
     }
-    Write-Host ''
+    $script:kShellPackageProgress = $Percent
+    if ($Percent -eq 100) { Write-Host ''; $script:kShellPackageProgressActive = $false }
 }
+try {
 Show-KShellProgress 5 'Checking package'
 $sourceExecutable = Join-Path $PSScriptRoot 'kshell.exe'
 foreach ($requiredFile in @('kshell.exe','package-manifest.json','Install-KShellProfile.ps1','LICENSE','THIRD-PARTY-NOTICES.txt','README.txt')) {
@@ -82,7 +88,7 @@ Show-KShellProgress 70 'Installed notices and guides'
 if (-not $NoTerminalProfile) {
     $profileArguments = @{ Executable = $installedExecutable; FontFace = $FontFace }
     if ($TerminalProfilePath) { $profileArguments.OutputPath = $TerminalProfilePath }
-    & (Join-Path $installPath 'Install-KShellProfile.ps1') @profileArguments
+    & (Join-Path $installPath 'Install-KShellProfile.ps1') @profileArguments | Out-Null
 }
 if ($PathScope -ne 'None') {
     function Add-KShellPath([string]$ExistingPath) {
@@ -96,13 +102,17 @@ if ($PathScope -ne 'None') {
         $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
         $newUserPath = Add-KShellPath $userPath
         if ($newUserPath -cne $userPath) { [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User') }
-        Write-Output 'Added K Shell to your user PATH. Restart your terminal app to refresh other sessions.'
     }
     $env:PATH = Add-KShellPath $env:PATH
 }
+Show-KShellProgress 100 'Installation complete'
 Write-Output "Installed K Shell $($manifest.version): $installedExecutable"
+if ($PathScope -eq 'User') { Write-Output 'K Shell is on your user PATH. Close all terminal windows and reopen the terminal app to refresh existing sessions.' }
 if (-not $NoTerminalProfile) { Write-Output 'Close and reopen Windows Terminal, then select K Shell from the profile dropdown.' }
 Write-Output 'Portable/direct launch also works by running the installed kshell.exe.'
-Show-KShellProgress 100 'Installation complete'
+Write-Output ("Start now: & '" + $installedExecutable.Replace("'", "''") + "'")
 & $installedExecutable --welcome
 if ($LASTEXITCODE -ne 0) { throw 'K Shell was copied, but the welcome check failed. Run kshell.exe --help to diagnose.' }
+} finally {
+    if ($script:kShellPackageProgressActive) { Write-Host ''; $script:kShellPackageProgressActive = $false }
+}

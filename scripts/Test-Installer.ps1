@@ -21,8 +21,12 @@ function Assert-Rejected([scriptblock]$Action, [string]$Message) {
 try {
     $install = Join-Path $testRoot 'installed shell with spaces'
     $profile = Join-Path $testRoot 'private terminal\kshell.json'
-    $setupOutput = & $bootstrap -Archive $Archive -InstallDirectory $install -TerminalProfilePath $profile -FontFace Consolas -PathScope Process -NoAnimation
+    $setupOutput = & $bootstrap -Archive $Archive -InstallDirectory $install -TerminalProfilePath $profile -FontFace Consolas -PathScope Process -NoAnimation *>&1
     Assert-True (($setupOutput -join "`n").Contains('Welcome to K Shell')) 'Bootstrap did not display the success welcome.'
+    Assert-True ([regex]::Matches(($setupOutput -join "`n"), 'Welcome to K Shell').Count -eq 1) 'Bootstrap repeated the package welcome banner.'
+    Assert-True ([regex]::Matches(($setupOutput -join "`n"), 'Installation complete').Count -eq 1) 'Bootstrap restarted or repeated package progress.'
+    Assert-True (($setupOutput -join "`n").Contains((Join-Path $install 'kshell.exe'))) 'Bootstrap did not print the exact immediate-launch path.'
+    Assert-True (-not ($setupOutput -join "`n").Contains([string][char]27)) 'Plain setup output contains ANSI controls.'
     Assert-True (-not (Test-Path -LiteralPath $env:KSHELL_CONFIG_DIR)) 'Setup installed optional theme configuration.'
     $executable = Join-Path $install 'kshell.exe'
     Assert-True (Test-Path -LiteralPath $profile) 'Bootstrap did not create the requested private Terminal profile.'

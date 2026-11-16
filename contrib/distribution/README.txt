@@ -9,7 +9,7 @@ QUICK START (PORTABLE)
 3. Type help to list commands. Type exit to leave K Shell.
 
 WELCOME / OPTIONAL THEMES
-Setup shows right-to-left loading and a K Shell ASCII welcome after success.
+Setup shows a left-to-right pixel loading line and a K Shell ASCII welcome after success.
 Pass -NoAnimation to suppress setup animation. The default prompt is used first;
 no optional design is installed automatically. Type theme, use Up/Down to preview
 Powerline, Atomic, Bubblesline, Cert or Negligible, and Enter to install and use.
@@ -37,6 +37,10 @@ The packaged installer leaves PATH unchanged by default. Pass -PathScope User
 to add the install folder to your user PATH, or -PathScope Process to change only
 the current setup process. No machine PATH is changed. Restart your terminal app
 after adding user PATH, then run kshell from PowerShell or CMD.
+The online one-liner runs in a child process and cannot change its parent
+terminal's existing PATH. Close ALL terminal windows and reopen the app, or
+launch immediately with: & "$env:LOCALAPPDATA\Programs\KShell\kshell.exe"
+The bootstrap also prints the exact launch path and accepts -Launch.
 The installed profile points to the installed copy, so you can remove the
 extracted download folder after installation. A prior installation is retained
 as a kshell-previous-*.exe backup during upgrades. Close old sessions when ready.

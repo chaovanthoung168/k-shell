@@ -334,8 +334,13 @@ Guidelines:
   Fonts/background/padding belong to Terminal profiles, never shell ANSI output.
   The installer adds only its own backed-up fragment, with no font installation,
   global default-profile change or general-purpose shell wrapper for K Shell.
-  The profile no longer forces the Midnight palette. Setup progress fills from
-  right to left after real stages; redirected/NoAnimation runs use plain messages.
+  The profile no longer forces the Midnight palette. Bootstrap setup owns one
+  left-to-right pixel animation on stderr, suppresses native download progress
+  and captures legacy package output so its bar/banner cannot restart the UI.
+  Restore cursor, progress preference and terminal state in finally; redirected
+  and NoAnimation runs use plain stages. Packaged offline setup fills pixels
+  left to right. Print the exact full-path launch command: a child PowerShell
+  cannot update its parent's PATH. -Launch is opt-in; never launch in tests.
   Interactive startup and successful package setup show a K Shell ASCII welcome;
   explicit --welcome previews it, while normal batch/-c execution stays clean.
   The `kshell` builtin explicitly prints the same welcome to its supplied output
