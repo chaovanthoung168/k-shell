@@ -10,6 +10,8 @@ use crate::{
 mod files;
 mod help;
 mod history;
+pub(crate) mod kpm;
+mod kreq;
 mod listing;
 mod system;
 mod text;
@@ -29,8 +31,8 @@ pub struct OutputFormat {
 
 pub const COMMAND_NAMES: &[&str] = &[
     "append", "cat", "cd", "clear", "copy", "cp", "create", "delete", "echo", "exit", "help",
-    "history", "kshell", "ls", "mkdir", "move", "mv", "open", "pwd", "rename", "rm", "specs",
-    "sysinfo", "theme", "touch", "tree", "update", "write",
+    "history", "kpm", "kreq", "kshell", "ls", "mkdir", "move", "mv", "open", "pwd", "rename", "rm",
+    "specs", "sysinfo", "theme", "touch", "tree", "update", "write",
 ];
 
 /// Preview argument syntax only. Uses utility/tree parsers without performing
@@ -39,6 +41,8 @@ pub(crate) fn valid_preview_syntax(args: &[String]) -> Option<bool> {
     let operands = &args[1..];
     Some(match args[0].as_str() {
         "echo" => true,
+        "kreq" => kreq::valid_syntax(operands),
+        "kpm" => kpm::valid_syntax(operands),
         "pwd" | "clear" => operands.is_empty(),
         "help" => help::valid_syntax(operands),
         "kshell" => welcome::valid_syntax(operands),
@@ -90,6 +94,8 @@ pub fn run(
         action: ShellAction::Continue,
     };
     match args[0].as_str() {
+        "kpm" => kpm::run(&args[1..], state, output, format)?,
+        "kreq" => kreq::run(&args[1..], &state.cwd, output, format)?,
         "kshell" => welcome::run(&args[1..], output, format)?,
         "theme" => {
             outcome.action = theme::run(&args[1..], state, output, format.terminal_width.is_some())?

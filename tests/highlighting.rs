@@ -66,6 +66,8 @@ fn suggested_builtin_letters_turn_green_and_invalid_suggestions_turn_red() {
             "cp" | "copy" | "mv" | "move" | "rename" | "update" => format!("{name} example other"),
             "write" | "append" => format!("{name} example.txt 'hello world'"),
             "open" => "open example.mp3".to_owned(),
+            "kreq" => "kreq get http://localhost:3000".to_owned(),
+            "kpm" => "kpm list".to_owned(),
             _ => (*name).to_owned(),
         };
         let (hint, colored) = preview(&helper, &name[..1], &full);

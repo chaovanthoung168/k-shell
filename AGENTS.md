@@ -125,7 +125,8 @@ must not connect to servers; use `-V` or `-G -F none` for offline integration ch
 Curl uses the same native runtime and streams. `platform::curl` may resolve bare
 `curl`/`curl.exe` from Windows' native system directory only after normal PATH
 lookup; explicit paths never fall back. Keep requests/TLS/options/configuration
-in curl, not a new built-in or wrapper. Completion uses cached local discovery.
+  in curl. The separate native `kreq` builtin does not wrap curl.
+  Completion uses cached local discovery.
 Automated checks disable curl configuration with first-option `-q` and use only
 test-owned loopback servers/files, with timeouts; never contact external services.
 
@@ -403,6 +404,47 @@ Guidelines:
 - Ensure redirected/non-interactive output is not polluted with ANSI color codes or prompt text.
 
 ## Error handling and security
+- KPM lives in `commands::kpm`: pure catalog/argument/version parsers, a provider
+  boundary, guarded inventory/pending-journal storage, native menu UI, progress,
+  and a child-only environment overlay. `ShellState::new` stays hermetic; the CLI
+  explicitly loads saved selections read-only. Runtime resolution checks managed
+  native binaries first, handles selected Node's npm/npx with its CLI scripts,
+  and applies PATH/JAVA_HOME/GOROOT/private Rust homes only to child commands.
+  Completion refreshes managed names after changes without per-key providers.
+  Node/Go/PHP/Temurin use checked ZIPs and SHA-256; Python/Git use exact WinGet IDs,
+  user scope and destination/registry identity checks, with switching and upgrade
+  explicitly unsupported. Rust requires existing rustup and uses private homes.
+  Never adopt existing unmanaged installs, bypass checksums, auto-elevate or edit
+  system PATH. Serialize changes with an OS file lock; verify before saving or
+  activating, and preserve pending failures for `kpm recover`. Never recursively
+  remove unmarked directories or follow links/reparse points. Native provider
+  processes use bounded capture, timeout/cancellation and kill-on-close jobs in
+  `platform::package_process`; installer brokers may escape a job, so verify
+  recovery rather than promising rollback. `platform::package_identity` only
+  reads HKCU installer locations. Tests use private stores, mock providers, local
+  ZIPs and compiled native fixtures; never install real tools or call providers.
+- Native HTTP lives in `commands::kreq`: a pure argument parser and streaming
+  reqwest client with Rustls/native roots and explicit serde_json formatting.
+  Kreq and KPM share one lazy current-thread runtime in `runtime::network`;
+  never nest block_on or construct a competing production runtime.
+  Interactive OutputFormat enables status/Content/RawContent/Headers summaries;
+  StatusCode combines code and canonical description, with no duplicate
+  StatusDescription row. Optional content or header/headers positional views
+  retain StatusCode and only the requested field. Headers view never reads or
+  parses the body; raw/file headers output uses an HTTP status/header block.
+  `--json` formats only Content, `--raw` bypasses summaries. Summary headers
+  redact credentials, display text escapes controls, and raw Content previews
+  retain at most 64 KiB. Never send summaries to files or plain executor streams.
+  Raw bytes use supplied output streams; never auto-format JSON or infer request
+  Content-Type. `-o` uses checked paths and native regular-file opening. Verbose
+  logs use stderr, redact sensitive headers/reflections, and omit URL query and
+  fragment. Never print raw reqwest errors that may contain credentials. Refuse
+  authenticated cross-origin redirects, including custom API-key headers. Ctrl+C
+  advances a lock-free generation counter in the existing console handler; kreq
+  polls it and drops in-flight async work with status 130. Keep this callback
+  allocation/I/O/lock-free. Shell pipes/redirection/expansion remain unimplemented;
+  test OS streams without claiming shell syntax support. HTTP tests use bounded,
+  test-owned loopback servers, never public APIs or users' configuration.
 - No panics or `unwrap()` on normal user input or recoverable I/O failures.
 - Prefer structured errors with context and stable exit codes.
 - Never concatenate untrusted arguments into a `cmd.exe` or PowerShell command line.

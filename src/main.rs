@@ -103,6 +103,12 @@ fn run() -> Result<i32, ShellError> {
         appearance.suggestions = suggestions;
     }
     let mut state = ShellState::new(cwd).with_appearance(appearance);
+    if let Err(error) = state.load_managed_versions() {
+        let _ = writeln!(
+            io::stderr(),
+            "kshell: managed tools disabled for this session: {error}"
+        );
+    }
     if interactive && let Some(store) = kshell::themes::ThemeStore::from_environment() {
         state = state.with_appearance(Appearance {
             prompt: store.selected(),

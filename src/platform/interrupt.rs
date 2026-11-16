@@ -2,7 +2,15 @@
 //! delivery to children. The line editor handles Ctrl+C as input at the prompt;
 //! foreground programs handle the normal Windows console broadcast themselves.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{io, process::ExitStatus};
+
+static GENERATION: AtomicUsize = AtomicUsize::new(0);
+
+/// Observe cancellation without I/O, locks or allocation in the console handler.
+pub(crate) fn generation() -> usize {
+    GENERATION.load(Ordering::Relaxed)
+}
 
 /// Install once for the interactive session; restore the previous handler chain
 /// when it ends. Do not install an inheritable ignore flag or a new child group.
@@ -41,7 +49,12 @@ unsafe extern "system" fn handle_interrupt(event: u32) -> i32 {
     use windows_sys::Win32::System::Console::{CTRL_BREAK_EVENT, CTRL_C_EVENT};
     // Runs on a Windows callback thread: no allocation, I/O, locks or shell
     // state access. Leave close/logoff/shutdown events to Windows' handler chain.
-    i32::from(matches!(event, CTRL_C_EVENT | CTRL_BREAK_EVENT))
+    if matches!(event, CTRL_C_EVENT | CTRL_BREAK_EVENT) {
+        GENERATION.fetch_add(1, Ordering::Relaxed);
+        1
+    } else {
+        0
+    }
 }
 
 pub fn exit_code(status: ExitStatus) -> i32 {

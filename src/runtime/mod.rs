@@ -1,4 +1,5 @@
 use std::io::Write;
+pub(crate) mod network;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -31,6 +32,7 @@ pub struct ShellState {
     /// Snapshot of the bounded editor history, populated only by the interactive
     /// host. Batch execution never reads or writes the user's history file.
     pub(crate) history: Vec<String>,
+    pub(crate) managed: commands::kpm::environment::Environment,
 }
 
 impl ShellState {
@@ -40,11 +42,17 @@ impl ShellState {
             last_status: 0,
             appearance: Default::default(),
             history: Vec::new(),
+            managed: Default::default(),
         }
     }
 
     pub fn cwd(&self) -> &Path {
         &self.cwd
+    }
+    /// Read-only startup. New test states do not load the user's package store.
+    pub fn load_managed_versions(&mut self) -> Result<(), ShellError> {
+        self.managed = commands::kpm::environment::Environment::load()?;
+        Ok(())
     }
     pub fn with_appearance(mut self, appearance: crate::presentation::Appearance) -> Self {
         self.appearance = appearance;
@@ -91,36 +99,44 @@ impl ShellState {
         if let Some(outcome) = commands::run(&args, self, output, format)? {
             return Ok(outcome);
         }
-        let mut process = match platform::resolve_executable(&args[0], &self.cwd) {
-            Ok(executable) => {
-                let mut process = Command::new(executable);
-                process.args(&args[1..]).current_dir(&self.cwd);
-                process
+        let mut process = if let Some(mut command) = self.managed.command(&args[0], &self.cwd)? {
+            command.args(&args[1..]);
+            command
+        } else {
+            match platform::resolve_executable(&args[0], &self.cwd) {
+                Ok(executable) => {
+                    let mut process = Command::new(executable);
+                    process.args(&args[1..]).current_dir(&self.cwd);
+                    process
+                }
+                Err(error)
+                    if cfg!(windows)
+                        && error.status == 127
+                        && platform::npm::PackageTool::parse(&args[0]).is_some() =>
+                {
+                    // The guard recognizes only bare npm/npx; native executables
+                    // and explicit-path errors retain normal lookup precedence.
+                    let tool = platform::npm::PackageTool::parse(&args[0])
+                        .ok_or_else(|| ShellError::new("unrecognized Node.js package tool", 127))?;
+                    let launcher = platform::npm::PackageLauncher::find(tool, &self.cwd)?;
+                    let arguments: Vec<std::ffi::OsString> =
+                        args[1..].iter().map(std::ffi::OsString::from).collect();
+                    launcher.command(&arguments, &self.cwd)?
+                }
+                Err(error)
+                    if cfg!(windows)
+                        && error.status == 127
+                        && args[0].eq_ignore_ascii_case("code") =>
+                {
+                    let launcher = platform::vscode::CodeLauncher::find(&self.cwd)?;
+                    let arguments: Vec<std::ffi::OsString> =
+                        args[1..].iter().map(std::ffi::OsString::from).collect();
+                    launcher.command(&arguments, &self.cwd)
+                }
+                Err(error) => return Err(error),
             }
-            Err(error)
-                if cfg!(windows)
-                    && error.status == 127
-                    && platform::npm::PackageTool::parse(&args[0]).is_some() =>
-            {
-                // The guard recognizes only bare npm/npx; native executables
-                // and explicit-path errors retain normal lookup precedence.
-                let tool = platform::npm::PackageTool::parse(&args[0])
-                    .ok_or_else(|| ShellError::new("unrecognized Node.js package tool", 127))?;
-                let launcher = platform::npm::PackageLauncher::find(tool, &self.cwd)?;
-                let arguments: Vec<std::ffi::OsString> =
-                    args[1..].iter().map(std::ffi::OsString::from).collect();
-                launcher.command(&arguments, &self.cwd)?
-            }
-            Err(error)
-                if cfg!(windows) && error.status == 127 && args[0].eq_ignore_ascii_case("code") =>
-            {
-                let launcher = platform::vscode::CodeLauncher::find(&self.cwd)?;
-                let arguments: Vec<std::ffi::OsString> =
-                    args[1..].iter().map(std::ffi::OsString::from).collect();
-                launcher.command(&arguments, &self.cwd)
-            }
-            Err(error) => return Err(error),
         };
+        self.managed.apply(&mut process)?;
         output
             .flush()
             .map_err(|error| ShellError::new(format!("stdout: {error}"), 1))?;

@@ -309,6 +309,7 @@ pub fn native_commands(cwd: &Path) -> Vec<String> {
 pub struct ShellHelper {
     pub(crate) cwd: PathBuf,
     pub(crate) native_commands: Vec<String>,
+    managed_names: Vec<String>,
     pub(crate) history_hinter: rustyline::hint::HistoryHinter,
     pub(crate) appearance: crate::presentation::Appearance,
     pub(crate) colors_enabled: bool,
@@ -322,6 +323,7 @@ impl ShellHelper {
         Self {
             cwd,
             native_commands,
+            managed_names: Vec::new(),
             history_hinter: rustyline::hint::HistoryHinter::new(),
             appearance: Default::default(),
             colors_enabled: false,
@@ -334,7 +336,19 @@ impl ShellHelper {
         if self.cwd != cwd {
             self.suggestion.borrow_mut().take();
             self.native_commands = native_commands(cwd);
+            self.native_commands
+                .extend(self.managed_names.iter().cloned());
             self.cwd = cwd.to_path_buf();
+        }
+    }
+
+    /// The interactive host supplies actual terminal/NO_COLOR capabilities.
+    pub(crate) fn set_managed_names(&mut self, names: &[String]) {
+        if self.managed_names != names {
+            self.managed_names = names.to_vec();
+            self.native_commands = native_commands(&self.cwd);
+            self.native_commands.extend(names.iter().cloned());
+            self.suggestion.borrow_mut().take();
         }
     }
 

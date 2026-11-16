@@ -186,6 +186,7 @@ pub fn run(state: &mut ShellState) -> Result<i32, ShellError> {
         }
         if let Some(helper) = editor.helper_mut() {
             helper.set_cwd(state.cwd());
+            helper.set_managed_names(&state.managed.names);
             helper.appearance = state.appearance();
             helper.set_colors_enabled(console.colors_enabled());
         }

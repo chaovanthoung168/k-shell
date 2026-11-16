@@ -31,6 +31,29 @@ const GROUPS: &[(&str, &str)] = &[
 
 const ENTRIES: &[Entry] = &[
     command!(
+        "tools",
+        ["kpm"],
+        "kpm install|versions|installed|current|use|upgrade|uninstall|list|search|recover",
+        "Install developer tools and switch managed versions.",
+        [
+            "Interactive install selects one tool and a stable version. Noninteractive: specify tool@version or tool@latest and --yes. Type kpm --help for providers and limitations."
+        ],
+        ["kpm list", "kpm install node", "kpm use java@21"]
+    ),
+    command!(
+        "tools",
+        ["kreq"],
+        "kreq <METHOD> <URL> [options] [content|headers]",
+        "Send HTTP requests with the native K Shell client.",
+        [
+            "StatusCode includes its description (200 OK). Select content or headers; -j formats Content. --raw shows only the body. Type kreq --help for all options."
+        ],
+        [
+            "kreq get https://example.com",
+            "kreq get https://example.com/api -j"
+        ]
+    ),
+    command!(
         "navigate",
         ["pwd"],
         "pwd",

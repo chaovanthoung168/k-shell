@@ -12,6 +12,8 @@ pub mod menu;
 pub mod nano;
 pub mod npm;
 pub mod open;
+pub(crate) mod package_identity;
+pub(crate) mod package_process;
 pub mod ssh;
 pub mod system;
 pub mod vscode;
