@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="assets/kshell-logo.png" alt="K Shell" width="420">
+  <img src="assets/kshell-logo-dark.png#gh-dark-mode-only" alt="K Shell" width="420">
+  <img src="assets/kshell-logo-light.png#gh-light-mode-only" alt="K Shell" width="420">
 </p>
 
 <h1 align="center">K Shell</h1>
