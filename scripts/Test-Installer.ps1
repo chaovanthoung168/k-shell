@@ -3,6 +3,7 @@
 param([Parameter(Mandatory = $true)][string]$Archive, [switch]$LiveRelease)
 
 $ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'Test-InstallerInline.ps1')
 $Archive = (Resolve-Path -LiteralPath $Archive).ProviderPath
 $bootstrap = Join-Path (Split-Path -Parent $PSScriptRoot) 'install.ps1'
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('kshell-installer-test-' + [Guid]::NewGuid().ToString('N'))

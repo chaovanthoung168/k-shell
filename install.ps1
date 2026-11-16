@@ -43,7 +43,9 @@ $previousTls = [Net.ServicePointManager]::SecurityProtocol
 try {
     Show-KShellProgress 5 'Preparing setup'
     [Net.ServicePointManager]::SecurityProtocol = $previousTls -bor [Net.SecurityProtocolType]::Tls12
-    if ($PSCmdlet.ParameterSetName -eq 'Online') {
+    # Invoke-Expression does not resolve this script's default parameter set.
+    # The documented irm ... | iex form has no Archive and must download online.
+    if ([string]::IsNullOrEmpty($Archive)) {
         $endpoint = 'latest'
         if ($Version -ne 'latest') { $endpoint = 'tags/v' + $Version.TrimStart('v') }
         $headers = @{ 'User-Agent' = 'KShell-Installer'; 'Accept' = 'application/vnd.github+json' }
