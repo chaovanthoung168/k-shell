@@ -3,7 +3,7 @@
   <img src="assets/kshell-logo-light.png#gh-light-mode-only" alt="K Shell" width="420">
 </p>
 
-<h1 align="center">K Shell</h1>
+<!-- <h1 align="center">K Shell</h1> -->
 
 <p align="center">
   K Shell is a fast, customizable, open-source shell built with Rust.<br>
