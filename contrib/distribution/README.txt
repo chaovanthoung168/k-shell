@@ -70,9 +70,15 @@ TRY THESE COMMANDS INSIDE K SHELL (ONE LINE AT A TIME)
    append demo/notes.txt 'Another line'
    cat demo/notes.txt
    curl --version
+   kreq --help
+   kpm list
+   kpm install
 
 AVAILABILITY
 K Shell provides its own built-ins and launches Windows programs natively.
+KPM and kreq are built into kshell.exe in v0.1.7 and later; no separate install
+is needed. Use kpm install to choose a developer tool, and kreq --help for HTTP
+request syntax. KPM downloads tools only when explicitly requested.
 Git, Node/npm, VS Code, Nano and SSH are external programs; install them
 separately when wanted. Windows curl is discovered when available. K Shell is
 not a Linux/WSL environment and does not run Linux ELF programs. Pipes, shell

@@ -1,15 +1,23 @@
-K Shell 0.1.6 adds the `kshell` builtin: type it inside K Shell to display the
-rainbow welcome banner again and return to your current prompt. No PATH setup or
-nested shell is needed. It includes the compact help overview, readable groups,
-palette-aware headings, narrow-window layouts and examples. Try `help ls`,
-`help files`, `help theme`, `help shortcuts` or `help all`; Tab completes topics.
-The rainbow K SHELL welcome and red command/error highlighting remain available,
-along with the
-right-to-left setup loading and five optional prompt designs introduced in 0.1.2:
-Powerline, Atomic, Bubblesline, Cert and Negligible.
-Fresh installations use the original default prompt. Type `theme`, preview with
-Up/Down and press Enter to install and save a style; Esc or Ctrl+C cancels.
-Themes install offline, and the selected design returns in new sessions.
+K Shell 0.1.7 includes the native `kreq` HTTP client and K Shell Package Manager
+(`kpm`) in the downloadable Windows executable. Both are builtins: no separate
+installation is needed. The v0.1.6 binary did not contain these commands even
+after their source was added to the main branch.
+
+After upgrading, exit any running K Shell session and launch K Shell again. Try:
+
+```text
+kreq --help
+kpm list
+kpm install
+```
+
+KPM manages Node.js, Python, Go, Rust, PHP, Git, and Java (Temurin JDK 17+), with
+provider-specific limits explained by `kpm --help`. `kreq` supports HTTP requests,
+headers, JSON formatting, response views, and downloads without wrapping curl.
+
+Packaging now checks that both commands and the KPM catalog work in the release
+binary and in private installations before publication. The bootstrap installer
+also prints the installed version so older downloads can be identified.
 
 Install K Shell on Windows 10/11 x64 from PowerShell:
 

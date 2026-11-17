@@ -106,6 +106,8 @@ fn real_curl_posts_quoted_json_and_downloads_to_a_unicode_path_using_only_loopba
                 Err(e) => return Err(e),
             }
         };
+        // Windows accepts inherit the listener's nonblocking mode.
+        connection.set_nonblocking(false)?;
         connection.set_read_timeout(Some(Duration::from_secs(5)))?;
         connection.set_write_timeout(Some(Duration::from_secs(5)))?;
         let mut request = Vec::new();

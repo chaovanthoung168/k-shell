@@ -18,6 +18,7 @@ try {
     Assert-True (($setupOutput -join "`n").Contains('Welcome to K Shell')) 'Successful setup did not display the K Shell welcome.'
     $executable = Join-Path $install 'kshell.exe'
     Assert-True (Test-Path -LiteralPath $executable) 'Installed executable is missing.'
+    & (Join-Path $PSScriptRoot 'Test-BundledCommands.ps1') -Executable $executable
     $manifest = Get-Content -LiteralPath (Join-Path $packageRoot 'package-manifest.json') -Raw | ConvertFrom-Json
     Assert-True ((Get-FileHash -LiteralPath $executable).Hash -eq $manifest.sha256) 'Installed binary differs from package.'
     $settings = Get-Content -LiteralPath $profile -Raw | ConvertFrom-Json

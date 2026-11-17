@@ -19,6 +19,11 @@ function Assert-Rejected([scriptblock]$Action, [string]$Message) {
     Assert-True $rejected $Message
 }
 try {
+    # An existing user installation must not shadow the private fixture when
+    # checking command discovery. Restore the original process PATH in finally.
+    $env:PATH = (@($env:PATH -split ';' | Where-Object {
+        $_ -and -not (Test-Path -LiteralPath (Join-Path $_.Trim('"') 'kshell.exe') -PathType Leaf)
+    }) -join ';')
     $install = Join-Path $testRoot 'installed shell with spaces'
     $profile = Join-Path $testRoot 'private terminal\kshell.json'
     $setupOutput = & $bootstrap -Archive $Archive -InstallDirectory $install -TerminalProfilePath $profile -FontFace Consolas -PathScope Process -NoAnimation *>&1
@@ -33,6 +38,7 @@ try {
     Assert-True ((Get-Command kshell.exe).Source -eq $executable) 'Installed shell cannot be found on process PATH.'
     $help = & $executable --help
     Assert-True ($LASTEXITCODE -eq 0 -and ($help -join "`n").Contains('K Shell')) 'Installed shell did not run.'
+    & (Join-Path $PSScriptRoot 'Test-BundledCommands.ps1') -Executable $executable
     & $bootstrap -Archive $Archive -InstallDirectory $install -NoTerminalProfile -PathScope Process
     Assert-True (@($env:PATH -split ';' | Where-Object { $_ -ieq $install }).Count -eq 1) 'Upgrade duplicated the PATH entry.'
     Assert-True (@(Get-ChildItem -LiteralPath $install -Filter 'kshell-previous-*.exe').Count -eq 1) 'Bootstrap upgrade did not preserve the previous executable.'
@@ -69,6 +75,7 @@ try {
     $unusedProfile = Join-Path $testRoot 'must-not-write.json'
     & $bootstrap -InstallDirectory $onlineInstall -TerminalProfilePath $unusedProfile -NoTerminalProfile -PathScope None
     Assert-True (Test-Path -LiteralPath (Join-Path $onlineInstall 'kshell.exe')) 'Online installation failed.'
+    & (Join-Path $PSScriptRoot 'Test-BundledCommands.ps1') -Executable (Join-Path $onlineInstall 'kshell.exe')
     Assert-True (-not (Test-Path -LiteralPath $unusedProfile)) 'NoTerminalProfile unexpectedly wrote a profile.'
     if (-not $LiveRelease) {
         & $bootstrap -Version $version -InstallDirectory $onlineInstall -NoTerminalProfile -PathScope None

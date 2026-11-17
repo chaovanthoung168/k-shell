@@ -25,17 +25,17 @@
 - **Syntax highlighting:** identify known commands, unsupported syntax, and suggestion status while typing.
 - **Customizable appearance:** choose a prompt design, color palette, icons, and suggestion style.
 - **Persistent history:** recall previous commands and search them with the keyboard.
-- **Developer tools:** install and switch managed versions with KPM in the updated source build.
-- **Native HTTP client:** send API requests and inspect JSON with `kreq` in the updated source build.
+- **Developer tools:** install and switch managed versions with the built-in KPM.
+- **Native HTTP client:** send API requests and inspect JSON with the built-in `kreq`.
 
 K Shell targets **Windows 10/11 x64**. It has its own lexer, parser, and runtime;
 normal commands execute without a PowerShell, CMD, Git Bash, or WSL parser.
 It is an early shell with a deliberately limited command language. See
 [current limitations](#current-limitations) before using shell scripts.
 
-**Release availability:** the existing v0.1.6 download does not include KPM or
-`kreq`. To use those commands, [build the updated source](#build-from-source)
-and launch the executable you just built.
+**Release availability:** KPM and `kreq` are built into K Shell v0.1.7 and newer.
+Run the [installer](#install) to install or upgrade, then exit any old K Shell
+session and start `kshell` again. Neither command needs a separate installation.
 
 ## Contents
 
@@ -325,8 +325,8 @@ file operations are not transactional.
 | `theme [option]` | Configure prompt design, palette, icons, and suggestions; see [configuration](#configuration). |
 | `sysinfo` / `specs` | Show native Windows OS, user, CPU, GPU, usable RAM, and local drive information. |
 | `exit [0-255]` | Exit with the supplied status, or the previous command's status. |
-| `kpm <command>` | Install and manage developer tools; updated source build only. |
-| `kreq <METHOD> <URL> [options] [content\|headers]` | Make HTTP requests; updated source build only. |
+| `kpm <command>` | Install and manage developer tools; built in since v0.1.7. |
+| `kreq <METHOD> <URL> [options] [content\|headers]` | Make HTTP requests; built in since v0.1.7. |
 
 ### External programs
 
@@ -375,7 +375,7 @@ remain plain and omit interactive prompts and decoration.
 
 ## Package manager: KPM
 
-**Updated source build only.** Run `kpm install` to select one tool, or
+**Built in since v0.1.7.** Run `kpm install` to select one tool, or
 `kpm install node` to select a version. The menu shows a Latest Stable shortcut,
 the five newest distinct stable releases, and Other version for manual entry.
 Use Up/Down, Enter, and Esc/Ctrl+C. Only one tool is accepted per installation.
@@ -435,7 +435,7 @@ recovery, active-version removal, and provider details.
 
 ## HTTP client: kreq
 
-**Updated source build only.** Send HTTP requests without a separate curl
+**Built in since v0.1.7.** Send HTTP requests without a separate curl
 installation. Supported methods are `get`, `post`, `put`, `patch`, `delete`,
 `head`, and `options`, case-insensitively.
 

@@ -122,7 +122,7 @@ try {
         }
         if ($release.draft -or $release.prerelease -or $release.tag_name -notmatch '^v([0-9]+\.[0-9]+\.[0-9]+)$') { throw 'Expected a stable vMAJOR.MINOR.PATCH release.' }
         $releaseVersion = $Matches[1]
-        Show-KShellProgress 20 'Found stable release'
+        Show-KShellProgress 20 ("Found stable release v" + $releaseVersion)
         if ($Version -ne 'latest' -and $releaseVersion -ne $Version.TrimStart('v')) { throw 'GitHub returned a different release version.' }
         $archiveName = "KShell-$releaseVersion-windows-x64.zip"
         foreach ($name in @($archiveName, ($archiveName + '.sha256'))) {
@@ -181,7 +181,7 @@ try {
     if ((Get-Command (Join-Path $package 'Install.ps1')).Parameters.ContainsKey('NoAnimation')) { $arguments.NoAnimation = $true }
     if ($InstallDirectory) { $arguments.InstallDirectory = $InstallDirectory }
     if ($TerminalProfilePath) { $arguments.TerminalProfilePath = $TerminalProfilePath }
-    Show-KShellProgress 80 'Installing K Shell'
+    Show-KShellProgress 80 ("Installing K Shell v" + $releaseVersion)
     # Legacy packages also write their own progress and banner. Keep one owner of
     # terminal output, while retaining every installer stream for error reporting.
     $setupLog = Join-Path $temporaryRoot 'package-setup.log'
@@ -199,6 +199,7 @@ try {
     else { Show-KShellProgress 100 'Installation complete' }
     & $installedExecutable --welcome
     if ($LASTEXITCODE -ne 0) { throw 'K Shell was installed, but the welcome check failed.' }
+    Write-Host ("Installed K Shell v" + $releaseVersion)
     $launchCommand = "& '" + $installedExecutable.Replace("'", "''") + "'"
     Write-Host 'Start K Shell now (works in your current terminal):'
     Write-Host "  $launchCommand"

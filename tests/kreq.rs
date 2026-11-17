@@ -47,6 +47,9 @@ impl Server {
             while !stopping.load(Ordering::Relaxed) {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        // Windows accepts inherit the listener's nonblocking mode.
+                        // Request parsing below uses blocking reads with timeouts.
+                        stream.set_nonblocking(false).unwrap();
                         stream
                             .set_read_timeout(Some(Duration::from_secs(2)))
                             .unwrap();

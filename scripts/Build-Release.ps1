@@ -28,6 +28,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Dependency metadata could not be read.' }
     $metadata = $metadataText | ConvertFrom-Json
     $binary = Join-Path $env:CARGO_TARGET_DIR 'x86_64-pc-windows-msvc\release\kshell.exe'
+    & (Join-Path $PSScriptRoot 'Test-BundledCommands.ps1') -Executable $binary
     [IO.Directory]::CreateDirectory($outputRoot) | Out-Null
     $staging = Join-Path $outputRoot ('staging-' + [Guid]::NewGuid().ToString('N'))
     $package = Join-Path $staging $packageName
@@ -48,6 +49,12 @@ try {
         [IO.Directory]::CreateDirectory($licenseDirectory) | Out-Null
         $dependencyRoot = Split-Path -Parent $dependency.manifest_path
         $licenses = @(Get-ChildItem -LiteralPath $dependencyRoot -File | Where-Object { $_.Name -match '^(LICENSE|LICENCE|COPYING|NOTICE|UNLICENSE)' })
+        # r-efi carries its full MIT permission and copyright notices in AUTHORS.
+        # Its Cargo archive has no conventionally named LICENSE file.
+        if ($dependency.name -eq 'r-efi') {
+            $authors = Join-Path $dependencyRoot 'AUTHORS'
+            if (Test-Path -LiteralPath $authors -PathType Leaf) { $licenses += Get-Item -LiteralPath $authors }
+        }
         if ($dependency.license_file) {
             $explicitLicense = Join-Path $dependencyRoot $dependency.license_file
             if (Test-Path -LiteralPath $explicitLicense -PathType Leaf) { $licenses += Get-Item -LiteralPath $explicitLicense }

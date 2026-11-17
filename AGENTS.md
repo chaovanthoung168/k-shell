@@ -28,6 +28,10 @@ Its default is user PATH; the package installer defaults to unchanged PATH.
 covers bootstrap installation with local download fixtures; `-LiveRelease`
 additionally checks public downloads using private install/profile destinations.
 Version tags publish via `.github/workflows/release.yml` only after package checks.
+KPM and `kreq` are built into `kshell.exe` starting with v0.1.7; never package
+them as separate executables. `scripts/Test-BundledCommands.ps1` checks their
+offline help and the KPM catalog before packaging and after installation, using
+private configuration/tool roots. A source push does not update published assets.
 
 ## Goals and non-goals
 

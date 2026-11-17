@@ -7,3 +7,5 @@ upstream license at the Cargo archive's recorded Git commit:
 https://github.com/DoumanAsh/clipboard-win/blob/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE
 
 Other dependency texts come directly from the locked Cargo source archives.
+For `r-efi`, the packager copies `AUTHORS`, which contains the full MIT permission
+text and copyright notices, directly from its locked source archive.
